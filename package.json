@@ -1,0 +1,51 @@
+{
+  "name": "@binance-name/bns",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "c": "npx hardhat compile",
+    "h_flatten": "npx hardhat flatten > hardhat_flattened.sol",
+    "f": "truffle-flattener ./contracts/CanadaCoin.sol --output ./flattened.sol",
+    "deploy_kovan": "npx hardhat deploy --network kovan --reset",
+    "deploy_ropsten": "npx hardhat deploy --network ropsten --reset",
+    "deploy_rinkeby": "npx hardhat deploy --network rinkeby --reset",
+    "deploy_eth_mainnet": "npx hardhat deploy --network eth_mainnet",
+    "deploy_bsc_mainnet": "npx hardhat deploy --network bsc_mainnet",
+    "deploy_bsc_testnet": "npx hardhat deploy --network bsc_testnet --reset",
+    "deploy_polygon_testnet": "npx hardhat deploy --network polygon_testnet --reset",
+    "deploy_local": "npx hardhat deploy --network localhost --reset",
+    "run_node": "npx hardhat node"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.2.0",
+    "@openzeppelin/contracts-upgradeable": "^4.2.0",
+    "bn.js": "^5.2.0",
+    "colors": "^1.4.0",
+    "hardhat": "^2.2.1",
+    "hardhat-abi-exporter": "^2.8.0",
+    "hardhat-contract-sizer": "^2.0.3",
+    "hardhat-ethers": "^1.0.1",
+    "ipfs-http-client": "^56.0.1",
+    "truffle-flattener": "^1.6.0"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-etherscan": "^2.1.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@openzeppelin/hardhat-upgrades": "^1.9.0",
+    "bn.js": "^5.2.0",
+    "chai": "^4.3.4",
+    "colors": "^1.4.0",
+    "eth-crypto": "^2.0.0",
+    "eth-sig-util": "^3.0.1",
+    "ethereum-waffle": "^3.3.0",
+    "ethereumjs-util": "^7.1.0",
+    "ethers": "^5.4.1",
+    "hardhat-deploy": "^0.7.5",
+    "web3": "^1.7.1"
+  }
+}
