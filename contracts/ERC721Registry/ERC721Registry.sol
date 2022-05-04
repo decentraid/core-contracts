@@ -25,6 +25,23 @@ contract ERC721Registry is
     
 
     //////////////////////////// Overrides Starts  //////////////////////////
+    
+    /**
+     * @dev _beforeTokenTransfer 
+     */
+     function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 tokenId
+    ) 
+        internal 
+        virtual 
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
+    {
+        super._beforeTokenTransfer(from, to, tokenId);
+    }
+
+
      /**
      * @dev See {IERC165-supportsInterface}.
      */
@@ -32,7 +49,8 @@ contract ERC721Registry is
         public 
         view 
         virtual 
-        override(ERC721Upgradeable, ERC721EnumerableUpgradeable) returns (bool) 
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable) 
+        returns (bool) 
     {
         return super.supportsInterface(interfaceId);
     }
