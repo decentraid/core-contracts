@@ -16,7 +16,8 @@
     "deploy_bsc_testnet": "npx hardhat deploy --network bsc_testnet --reset",
     "deploy_polygon_testnet": "npx hardhat deploy --network polygon_testnet --reset",
     "deploy_local": "npx hardhat deploy --network localhost --reset",
-    "run_node": "npx hardhat node"
+    "run_node": "npx hardhat node",
+    "build-regex": "npx solregex2 --name NameLabelRegex '(xn--)?[a-z0-9]+(-[a-z0-9]+)*' > 'contracts/utils/NameLabelRegex.sol'"
   },
   "author": "",
   "license": "ISC",
@@ -30,6 +31,7 @@
     "hardhat-contract-sizer": "^2.0.3",
     "hardhat-ethers": "^1.0.1",
     "ipfs-http-client": "^56.0.1",
+    "solregex2": "^0.3.1",
     "truffle-flattener": "^1.6.0"
   },
   "devDependencies": {

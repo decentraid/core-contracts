@@ -14,15 +14,46 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Royalt
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
+import "../roles/Roles.sol";
 
 contract ERC721Registry is
     Initializable,
     ContextUpgradeable,
+    Roles,
     ERC721Upgradeable,
+    ERC165StorageUpgradeable,
+    ERC721URIStorageUpgradeable,
+    ERC721RoyaltyUpgradeable,
+    ERC721BurnableUpgradeable,
     ERC721EnumerableUpgradeable
 {
     
+    using CountersUpgradeable for CountersUpgradeable.Counter;
+    using SafeMathUpgradeable for uint256;
+
+
+    function initialize(
+        string memory registryTLDName,
+        string memory registryTLDSymbol,
+        string memory uri,
+        bool   canExpire
+    )
+        public 
+        initializer 
+    {
+
+        // initailize the core components
+        __ERC721_init(registryTLDName, registryTLDSymbol);
+        __ERC721Enumerable_init();
+        __ERC721URIStorage_init();
+        __ERC165Storage_init();
+        
+        // initialize roles
+        __Roles_init();
+    }
 
     //////////////////////////// Overrides Starts  //////////////////////////
     

@@ -9,9 +9,13 @@ pragma solidity ^0.8.0;
 
 contract Defs {
 
-    struct TLDRecord {
-        string  name;
-        bytes32 hash;
+    struct RegistryRecord {
+        string      name;
+        bytes32     nameHash;
+        address     assetAddress;
+        bool        canExpire;
+        uint256     createdAt;
+        uint256     updatedAt;
     }
 
 }
