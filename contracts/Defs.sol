@@ -9,8 +9,9 @@ pragma solidity ^0.8.0;
 
 contract Defs {
 
-    struct RegistryRecord {
+    struct RegistryInfo {
         string      name;
+        string      symbol;
         bytes32     nameHash;
         address     assetAddress;
         bool        canExpire;

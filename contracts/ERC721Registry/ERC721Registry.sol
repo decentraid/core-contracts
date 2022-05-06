@@ -17,6 +17,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Burnab
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
+import "../Defs.sol";
 import "../roles/Roles.sol";
 
 contract ERC721Registry is
@@ -28,17 +29,19 @@ contract ERC721Registry is
     ERC721URIStorageUpgradeable,
     ERC721RoyaltyUpgradeable,
     ERC721BurnableUpgradeable,
-    ERC721EnumerableUpgradeable
+    ERC721EnumerableUpgradeable,
+    Defs
 {
     
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeMathUpgradeable for uint256;
 
+    // registry info 
+    RegistryInfo  private _registryInfo;
 
     function initialize(
         string memory registryTLDName,
         string memory registryTLDSymbol,
-        string memory uri,
         bool   canExpire
     )
         public 
@@ -53,9 +56,38 @@ contract ERC721Registry is
         
         // initialize roles
         __Roles_init();
+
+        // lets initiate registry
+        _registryInfo = RegistryInfo({
+            name: registryTLDName,
+            symbol: registryTLDSymbol,
+            canExpire: canExpire,
+            createdAt: block.timestamp,
+            updateAt:  block.timestamp
+        })
     }
 
     //////////////////////////// Overrides Starts  //////////////////////////
+
+    function _burn(uint256 tokenId)
+        internal
+        override(
+            ERC721Upgradeable, 
+            ERC721URIStorageUpgradeable,
+            ERC721RoyaltyUpgradeable
+        )
+    {
+        super._burn(tokenId);
+    }
+
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
+        returns (string memory)
+    {
+        return super.tokenURI(tokenId);
+    }
     
     /**
      * @dev _beforeTokenTransfer 
@@ -80,7 +112,13 @@ contract ERC721Registry is
         public 
         view 
         virtual 
-        override(ERC721Upgradeable, ERC721EnumerableUpgradeable) 
+        override(
+            ERC721Upgradeable, 
+            ERC721EnumerableUpgradeable, 
+            ERC165StorageUpgradeable, 
+            ERC721RoyaltyUpgradeable, 
+            AccessControlUpgradeable
+        ) 
         returns (bool) 
     {
         return super.supportsInterface(interfaceId);

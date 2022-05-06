@@ -20,4 +20,13 @@ contract Roles is Initializable, ContextUpgradeable, AccessControlUpgradeable {
         _setupRole(ADMIN_ROLE, _msgSender());
     }
 
+    
+    /**
+     * @dev onlyAdmin modifier
+     */
+    modifier onlyAdmin {
+        require(hasRole(ADMIN_ROLE, _msgSender()), "ONLY_ADMIN_PERMITTED");
+        _;
+    }
+
 }
