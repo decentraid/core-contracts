@@ -31,16 +31,30 @@ contract NameUtils  {
     }
 
     /**
-     * @dev nameHash convert the string to name hash format
+     *  @dev nameHash convert the string to name hash format
+     *  @param _label string variable of the name label example bnb, cake ...
+     *  @param _parentHash the parenthash 
+     */
+    function nameHash(string memory _label, bytes32 _parentHash)
+        public 
+        pure 
+        returns (bytes32 _namehash) 
+    {  
+        require(_parentHash == "", "BNS#NameUtils: PARENT_HASH_REQUIRED");
+        _namehash = keccak256(abi.encodePacked(_parentHash, keccak256(abi.encodePacked(_label))));
+    }
+
+    /**
+     *  @dev nameHash for registry TLD 
      *  @param _tld string variable of the name label example bnb, cake ...
      */
     function getTLDNameHash(string memory _tld)
         public 
         pure 
-        returns (bytes32 namehash) 
-    {   
-        namehash = 0x0000000000000000000000000000000000000000000000000000000000000000;
-        namehash = keccak256(abi.encodePacked(namehash, keccak256(abi.encodePacked(_tld))));
+        returns (bytes32 _namehash) 
+    {  
+        _namehash = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        _namehash = keccak256(abi.encodePacked(_namehash, keccak256(abi.encodePacked(_tld))));
     }
 
 }

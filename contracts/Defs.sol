@@ -9,18 +9,25 @@ pragma solidity ^0.8.0;
 
 contract Defs {
 
-    struct RegistryInfo {
-        string      tldName;
-        bytes32     tldNameHash;
-        address     assetAddress;
-        bool        canExpire;
-        uint        domainLengthMin;
-        uint        domainLengthMax;
-        uint256     createdAt;
-        uint256     updatedAt;
+    struct DomainPrices {
+        uint256  _1Letter;
+        uint256  _2Letters;
+        uint256  _3Letters;
+        uint256  _4Letters;
+        uint256  _5LettersPlus;
     }
 
-    struct DomainPrices {
-        
+    struct RegistryInfo {
+        string          tldName;
+        bytes32         tldNameHash;
+        address         assetAddress;
+        string          webHost;
+        bool            hasExpiry;
+        uint            minDomainLength;
+        uint            maxDomainLength;
+        DomainPrices    domainPrices;     
+        uint256         createdAt;
+        uint256         updatedAt;
     }
+
 }

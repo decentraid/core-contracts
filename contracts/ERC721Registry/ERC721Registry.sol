@@ -19,6 +19,8 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
 import "../Defs.sol";
 import "../roles/Roles.sol";
+import "../utils/NameUtils.sol";
+import "hardhat/console.sol";
 
 contract ERC721Registry is
     Initializable,
@@ -30,6 +32,7 @@ contract ERC721Registry is
     ERC721RoyaltyUpgradeable,
     ERC721BurnableUpgradeable,
     ERC721EnumerableUpgradeable,
+    NameUtils,
     Defs
 {
     
@@ -39,18 +42,22 @@ contract ERC721Registry is
     // registry info 
     RegistryInfo  private _registryInfo;
 
+    /**
+     * initialize the contract
+     */
     function initialize(
-        string memory _name,
-        string memory _symbol,
-        string memory _tldName,
-        bool   canExpire
+        string          memory  _name,
+        string          memory  _symbol,
+        string          memory  _tldName,
+        string          memory  _webHost,
+        bool                    _hasExpiry
     )
         public 
         initializer 
     {
 
         // initailize the core components
-        __ERC721_init(registryTLDName, registryTLDSymbol);
+        __ERC721_init(_name, _symbol);
         __ERC721Enumerable_init();
         __ERC721URIStorage_init();
         __ERC165Storage_init();
@@ -58,15 +65,28 @@ contract ERC721Registry is
         // initialize roles
         __Roles_init();
 
+        // prices are in usdt
+        DomainPrices memory _domainPrices = DomainPrices({
+            _1Letter:      5000,
+            _2Letters:     3000,
+            _3Letters:     500,
+            _4Letters:     150,
+            _5LettersPlus: 10
+        });
+
         // lets initiate registry
         _registryInfo = RegistryInfo({
-            tldName:        _tldName,
-            nameHash:       getTLDNameHash(_tldName),
-            assetAddress:   address(this),
-            canExpire:      canExpire,
-            createdAt:      block.timestamp,
-            updateAt:       block.timestamp
-        })
+            tldName:            _tldName,
+            tldNameHash:        getTLDNameHash(_tldName),
+            assetAddress:       address(this),
+            webHost:            _webHost,
+            domainPrices:       _domainPrices,
+            minDomainLength:    2,
+            maxDomainLength:    0, // 0 means no limit
+            hasExpiry:          _hasExpiry,
+            createdAt:          block.timestamp,
+            updatedAt:          block.timestamp
+        });
     }
 
     //////////////////////////// Overrides Starts  //////////////////////////
