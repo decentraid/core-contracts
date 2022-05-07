@@ -40,8 +40,9 @@ contract ERC721Registry is
     RegistryInfo  private _registryInfo;
 
     function initialize(
-        string memory registryTLDName,
-        string memory registryTLDSymbol,
+        string memory _name,
+        string memory _symbol,
+        string memory _tldName,
         bool   canExpire
     )
         public 
@@ -59,11 +60,12 @@ contract ERC721Registry is
 
         // lets initiate registry
         _registryInfo = RegistryInfo({
-            name: registryTLDName,
-            symbol: registryTLDSymbol,
-            canExpire: canExpire,
-            createdAt: block.timestamp,
-            updateAt:  block.timestamp
+            tldName:        _tldName,
+            nameHash:       getTLDNameHash(_tldName),
+            assetAddress:   address(this),
+            canExpire:      canExpire,
+            createdAt:      block.timestamp,
+            updateAt:       block.timestamp
         })
     }
 
