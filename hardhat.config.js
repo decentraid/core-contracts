@@ -15,6 +15,8 @@ require('hardhat-contract-sizer');
 
 require('hardhat-deploy');
 
+require('@openzeppelin/hardhat-upgrades');
+
 require('hardhat-abi-exporter',{ path: 'data/abi', clear: true });
 
 const {  
@@ -33,9 +35,9 @@ module.exports = {
 
     hardhat: {
       accounts: [{privateKey: `0x${accountPrivateKey}`, balance: "91229544000000000000"}],
-      forking: {
-          url: `https://speedy-nodes-nyc.moralis.io/${moralisApiKey}/bsc/mainnet`
-      },
+      //forking: {
+          //url: `https://speedy-nodes-nyc.moralis.io/${moralisApiKey}/bsc/mainnet`
+    //  },
     },
     
     bsc_testnet: {
