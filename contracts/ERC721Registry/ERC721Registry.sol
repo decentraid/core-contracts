@@ -35,6 +35,8 @@ contract ERC721Registry is
     NameUtils,
     Defs
 {
+
+    event RegisterDomain(uint256 tokenId, bytes32 nameHash);
     
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeMathUpgradeable for uint256;
@@ -51,7 +53,7 @@ contract ERC721Registry is
     mapping(bytes32 => SubDomainRecord) private _subdomainRecords;
 
     // reverse uint256 to namehash 
-    mapping(uint256 => bytes32) private _nameHashRecords;
+    mapping(uint256 => bytes32) private _tokenIdsToNameHash;
 
     /**
      * initialize the contract
@@ -65,6 +67,7 @@ contract ERC721Registry is
     )
         public 
         initializer 
+        onlyValidLabel(_tldName)
     {
 
         // initailize the core components
@@ -88,7 +91,7 @@ contract ERC721Registry is
         // lets initiate registry
         _registryInfo = RegistryInfo({
             name:               _tldName,
-            nameHash:           getTLDNameHash(_tldName),
+            hash:               getTLDNameHash(_tldName),
             assetAddress:       address(this),
             webHost:            _webHost,
             domainPrices:       _domainPrices,
@@ -114,24 +117,85 @@ contract ERC721Registry is
         _;
     }
 
+
     /**
      * @dev mint a token
      * @param _to the address to mint to
+     * @param _label the name of the domain
+     * @param _duration how many years the domain should be minted for
+     * @param _matadataKeys the meta data keys 
+     * @param _metadataValues the metadata values
      */
-    function _mintTo(
+    function _registerDomain(
         address _to,
-        string[] calldata _keys,
-        string[] calldata _values
-    ) private returns(uint256) {
+        string   calldata _label,
+        uint256  _duration,
+        string[] calldata _matadataKeys,
+        string[] calldata _metadataValues
+    ) 
+        private 
+        onlyValidLabel(_label)
+        onlyMinter
+        returns(uint256 _tokenId, bytes32 _domainHash) 
+    {
   
         _tokenIdCounter.increment();
 
-        uint256 _tokenId = _tokenIdCounter.current();
+        _tokenId = _tokenIdCounter.current();
         
         _mint(_to, _tokenId);
-    
 
-        return _tokenId;
+        uint256 minLabelLength = _registryInfo.minDomainLength;
+
+        if(isAdmin(_msgSender())){
+            minLabelLength = 1;
+        }
+
+        //lets now create our record 
+        require(
+            bytes(_label).length >= minLabelLength, 
+            string(abi.encodePacked("BNS#ERC721Registry: label must exceed ", _registryInfo.minDomainLength, " characters"))
+        );
+    
+        // _registryInfo.maxDomainLength == 0 means no limit
+        if(_registryInfo.maxDomainLength > 0) {
+            require(
+                bytes(_label).length <= _registryInfo.maxDomainLength, 
+                string(abi.encodePacked("BNS#ERC721Registry: label must not exceed ", _registryInfo.minDomainLength, " characters"))
+            );
+        }
+
+        //lets get the domain hash
+        _domainHash = nameHash(_label, _registryInfo.hash);
+
+
+        uint256 _expiry;
+
+        if(_registryInfo.hasExpiry) {
+            require(_duration >= 365 days, "BNS#ERC721Registry: minimum duration of 1 year is required");
+            _expiry = block.timestamp + _duration;
+        } 
+
+        // lets check if the domainHash exists
+        require(_domainRecords[_domainHash].tokenId == 0, "BNS#ERC721Registry: Domain is taken");
+
+        _domainRecords[_domainHash] = DomainRecord({
+            label:              _label,
+            hash:               _domainHash,
+            registryHash:       _registryInfo.hash,
+            tokenId:            _tokenId,
+            owner:              _to,
+            addressMap:         _to, 
+            expiry:             _expiry,
+            metadataKeys:       _matadataKeys,
+            metadataValues:     _metadataValues,
+            createdAt:          block.timestamp,
+            updatedAt:          block.timestamp
+        });
+
+        // lets create a reverse token id 
+        _tokenIdsToNameHash[_tokenId] = _domainHash;
+
     }
 
     //////////////////////////// Overrides Starts  //////////////////////////

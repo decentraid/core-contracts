@@ -19,7 +19,7 @@ contract Defs {
 
     struct RegistryInfo {
         string          name;
-        bytes32         nameHash;
+        bytes32         hash;
         address         assetAddress;
         string          webHost;
         bool            hasExpiry;
@@ -38,7 +38,7 @@ contract Defs {
         address  owner;
         address  addressMap;
         string[] metadataKeys;
-        string[] metadataValue;
+        string[] metadataValues;
         uint256  expiry;
         uint256  createdAt;
         uint256  updatedAt;  

@@ -19,7 +19,15 @@ contract Roles is Initializable, ContextUpgradeable, AccessControlUpgradeable {
     function __Roles_init() internal initializer {
         // make caller admin
         _setupRole(ADMIN_ROLE, _msgSender());
-         _setupRole(MINTER_ROLE, _msgSender());
+        _setupRole(MINTER_ROLE, _msgSender());
+    }
+
+    function isAdmin(address _account) 
+        internal 
+        view
+        returns (bool) 
+    {
+        return hasRole(ADMIN_ROLE, _account);
     }
 
     
