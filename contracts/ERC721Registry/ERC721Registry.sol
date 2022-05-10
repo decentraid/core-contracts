@@ -43,6 +43,8 @@ contract ERC721Registry is
 
     CountersUpgradeable.Counter private _tokenIdCounter;
 
+    // expiry grace period
+    uint256 expiryGracePeriod = 90 days;
 
     // registry info 
     RegistryInfo  private _registryInfo;
@@ -53,7 +55,7 @@ contract ERC721Registry is
     mapping(bytes32 => SubDomainRecord) private _subdomainRecords;
 
     // reverse uint256 to namehash 
-    mapping(uint256 => bytes32) private _tokenIdsToNameHash;
+    mapping(uint256 => bytes32) private _tokenIdsNameHashMap;
 
     /**
      * initialize the contract
@@ -172,12 +174,19 @@ contract ERC721Registry is
         uint256 _expiry;
 
         if(_registryInfo.hasExpiry) {
+
             require(_duration >= 365 days, "BNS#ERC721Registry: minimum duration of 1 year is required");
             _expiry = block.timestamp + _duration;
-        } 
 
-        // lets check if the domainHash exists
-        require(_domainRecords[_domainHash].tokenId == 0, "BNS#ERC721Registry: Domain is taken");
+            bool isDomainExpired = (block.timestamp > _domainRecords[_domainHash].expiry.add(expiryGracePeriod));
+
+            //lets check if we have do not have exiting record domain or expired 
+            require(_domainRecords[_domainHash].tokenId == 0 || isDomainExpired, "BNS#ERC721Registry:  Domain is taken");
+
+        }  else {
+            // lets check if the domainHash exists
+            require(_domainRecords[_domainHash].tokenId == 0, "BNS#ERC721Registry: Domain is taken");
+        }
 
         _domainRecords[_domainHash] = DomainRecord({
             label:              _label,
@@ -194,7 +203,7 @@ contract ERC721Registry is
         });
 
         // lets create a reverse token id 
-        _tokenIdsToNameHash[_tokenId] = _domainHash;
+        _tokenIdsNameHashMap[_tokenId] = _domainHash;
 
     }
 
@@ -234,7 +243,7 @@ contract ERC721Registry is
     {
 
         // lets get the domain record and change the owner to the new owner
-        _domainRecords[_nameHashRecords[tokenId]].owner = to;
+        _domainRecords[_tokenIdsNameHashMap[tokenId]].owner = to;
 
         super._beforeTokenTransfer(from, to, tokenId);
     }
