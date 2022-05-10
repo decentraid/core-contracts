@@ -39,8 +39,19 @@ contract ERC721Registry is
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeMathUpgradeable for uint256;
 
+    CountersUpgradeable.Counter private _tokenIdCounter;
+
+
     // registry info 
     RegistryInfo  private _registryInfo;
+
+    // domain record registry
+    // namehash => domainRecord struct
+    mapping(bytes32 => DomainRecord)    private _domainRecords;
+    mapping(bytes32 => SubDomainRecord) private _subdomainRecords;
+
+    // reverse uint256 to namehash 
+    mapping(uint256 => bytes32) private _nameHashRecords;
 
     /**
      * initialize the contract
@@ -76,8 +87,8 @@ contract ERC721Registry is
 
         // lets initiate registry
         _registryInfo = RegistryInfo({
-            tldName:            _tldName,
-            tldNameHash:        getTLDNameHash(_tldName),
+            name:               _tldName,
+            nameHash:           getTLDNameHash(_tldName),
             assetAddress:       address(this),
             webHost:            _webHost,
             domainPrices:       _domainPrices,
@@ -87,6 +98,40 @@ contract ERC721Registry is
             createdAt:          block.timestamp,
             updatedAt:          block.timestamp
         });
+    }
+
+    /**
+     * @dev if token exists 
+     * @param tokenId the token id
+     */
+    function exists(uint256 tokenId) external view  returns (bool) {
+        return _exists(tokenId);
+    }
+
+
+    modifier tokenExists(uint256 tokenId) {
+        require(_exists(tokenId),"BNS#ERC721Registry: UNKNOWN_TOKEN_ID");
+        _;
+    }
+
+    /**
+     * @dev mint a token
+     * @param _to the address to mint to
+     */
+    function _mintTo(
+        address _to,
+        string[] calldata _keys,
+        string[] calldata _values
+    ) private returns(uint256) {
+  
+        _tokenIdCounter.increment();
+
+        uint256 _tokenId = _tokenIdCounter.current();
+        
+        _mint(_to, _tokenId);
+    
+
+        return _tokenId;
     }
 
     //////////////////////////// Overrides Starts  //////////////////////////
@@ -123,6 +168,10 @@ contract ERC721Registry is
         virtual 
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
     {
+
+        // lets get the domain record and change the owner to the new owner
+        _domainRecords[_nameHashRecords[tokenId]].owner = to;
+
         super._beforeTokenTransfer(from, to, tokenId);
     }
 

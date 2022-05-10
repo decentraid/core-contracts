@@ -18,8 +18,8 @@ contract Defs {
     }
 
     struct RegistryInfo {
-        string          tldName;
-        bytes32         tldNameHash;
+        string          name;
+        bytes32         nameHash;
         address         assetAddress;
         string          webHost;
         bool            hasExpiry;
@@ -29,5 +29,31 @@ contract Defs {
         uint256         createdAt;
         uint256         updatedAt;
     }
+
+    struct DomainRecord {
+        string   label;
+        bytes32  hash;
+        bytes32  registryHash;
+        uint256  tokenId;
+        address  owner;
+        address  addressMap;
+        string[] metadataKeys;
+        string[] metadataValue;
+        uint256  expiry;
+        uint256  createdAt;
+        uint256  updatedAt;  
+    }
+
+    struct SubDomainRecord {
+        string   label;
+        bytes32  hash;
+        bytes32  parentHash; // the parent can be a domain or a subdomain
+        address  addressMap;
+        string[] metadataKeys;
+        string[] metadataValue;
+        uint256  createdAt;
+        uint256  updatedAt;  
+    }
+
 
 }
