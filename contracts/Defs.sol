@@ -22,7 +22,6 @@ contract Defs {
         bytes32         hash;
         address         assetAddress;
         string          webHost;
-        bool            hasExpiry;
         uint            minDomainLength;
         uint            maxDomainLength;
         DomainPrices    domainPrices;     
@@ -39,7 +38,6 @@ contract Defs {
         address  addressMap;
         string[] metadataKeys;
         string[] metadataValues;
-        uint256  expiry;
         uint256  createdAt;
         uint256  updatedAt;  
     }

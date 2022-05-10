@@ -64,8 +64,7 @@ contract ERC721Registry is
         string          memory  _name,
         string          memory  _symbol,
         string          memory  _tldName,
-        string          memory  _webHost,
-        bool                    _hasExpiry
+        string          memory  _webHost
     )
         public 
         initializer 
@@ -99,7 +98,6 @@ contract ERC721Registry is
             domainPrices:       _domainPrices,
             minDomainLength:    2,
             maxDomainLength:    0, // 0 means no limit
-            hasExpiry:          _hasExpiry,
             createdAt:          block.timestamp,
             updatedAt:          block.timestamp
         });
@@ -170,23 +168,9 @@ contract ERC721Registry is
         //lets get the domain hash
         _domainHash = nameHash(_label, _registryInfo.hash);
 
+        // lets check if the domainHash exists
+        require(_domainRecords[_domainHash].tokenId == 0, "BNS#ERC721Registry: Domain is taken");
 
-        uint256 _expiry;
-
-        if(_registryInfo.hasExpiry) {
-
-            require(_duration >= 365 days, "BNS#ERC721Registry: minimum duration of 1 year is required");
-            _expiry = block.timestamp + _duration;
-
-            bool isDomainExpired = (block.timestamp > _domainRecords[_domainHash].expiry.add(expiryGracePeriod));
-
-            //lets check if we have do not have exiting record domain or expired 
-            require(_domainRecords[_domainHash].tokenId == 0 || isDomainExpired, "BNS#ERC721Registry:  Domain is taken");
-
-        }  else {
-            // lets check if the domainHash exists
-            require(_domainRecords[_domainHash].tokenId == 0, "BNS#ERC721Registry: Domain is taken");
-        }
 
         _domainRecords[_domainHash] = DomainRecord({
             label:              _label,
@@ -195,7 +179,6 @@ contract ERC721Registry is
             tokenId:            _tokenId,
             owner:              _to,
             addressMap:         _to, 
-            expiry:             _expiry,
             metadataKeys:       _matadataKeys,
             metadataValues:     _metadataValues,
             createdAt:          block.timestamp,

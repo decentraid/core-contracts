@@ -43,8 +43,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                             tldObj.name,
                             tldObj.symbol,
                             tldObj.tldName,
-                            tldObj.webHost,
-                            tldObj.hasExpiry
+                            tldObj.webHost
                         ]
                     }
                 }
