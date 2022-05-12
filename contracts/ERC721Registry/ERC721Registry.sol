@@ -17,8 +17,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Burnab
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/Base64Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
 import "contracts/Defs.sol";
 import "contracts/roles/Roles.sol";
 import "contracts/utils/NameUtils.sol";
@@ -96,6 +94,7 @@ contract ERC721Registry is
             createdAt:          block.timestamp,
             updatedAt:          block.timestamp
         });
+        
     }
 
     /**
@@ -189,7 +188,8 @@ contract ERC721Registry is
         _records[_node] = Record({
             label:              _label,
             namehash:           _node,
-            registryHash:       _registryInfo.namehash,
+            parentNode:         _registryInfo.namehash,
+            nodeType:           NodeType.DOMAIN,
             tokenId:            _tokenId,
             owner:              _to,
             createdAt:          block.timestamp,

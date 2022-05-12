@@ -24,4 +24,37 @@ contract ContractBase is DataStore {
         }
     }
 
+    function resolver(bytes32 node) public virtual view returns (address) {
+        return address(this);
+    }
+
+    /**
+     * @dev Returns the TTL of a node, and any records associated with it.
+     * @param node The specified node.
+     * @return ttl of the node.
+     */
+    function ttl(bytes32 node) public virtual view returns (uint64) {
+        return 356 days;
+    }
+
+    /**
+     * @dev Returns whether a record has been imported to the registry.
+     * @param node The specified node.
+     * @return Bool if record exists
+     */
+    function recordExists(bytes32 node) public virtual view returns (bool) {
+        return _records[node].owner != address(0x0);
+    }
+
+    function owner(bytes32 node) public virtual view returns (address) {
+        
+        address addr = _records[node].owner;
+
+        if (addr == address(this)) {
+            return address(0x0);
+        }
+
+        return addr;
+    }
+
 }

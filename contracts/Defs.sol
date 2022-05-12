@@ -11,7 +11,8 @@ contract Defs {
 
     enum NodeType  {
         DOMAIN,
-        SUBDOMAIN
+        SUBDOMAIN,
+        REGISTRY
     }
 
     struct DomainPrices {
@@ -39,7 +40,6 @@ contract Defs {
         bytes32     namehash;
         bytes32     parentNode;
         NodeType    nodeType;
-        uint256     tokenId;
         address     owner;
         uint256     createdAt;
         uint256     updatedAt;  
