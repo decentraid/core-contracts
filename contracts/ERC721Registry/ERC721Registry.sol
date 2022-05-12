@@ -17,24 +17,29 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Burnab
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
-import "../Defs.sol";
-import "../roles/Roles.sol";
-import "../utils/NameUtils.sol";
+import "@openzeppelin/contracts-upgradeable/utils/Base64Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
+import "contracts/Defs.sol";
+import "contracts/roles/Roles.sol";
+import "contracts/utils/NameUtils.sol";
+import "contracts/ContractBase.sol";
+import "contracts/resolvers/AddressResolver.sol";
+import "contracts/resolvers/TextResolver.sol";
 import "hardhat/console.sol";
 
 contract ERC721Registry is
-    Initializable,
-    ContextUpgradeable,
+    ContractBase,
     Roles,
     ERC721Upgradeable,
-    ERC165StorageUpgradeable,
     ERC721URIStorageUpgradeable,
     ERC721RoyaltyUpgradeable,
     ERC721BurnableUpgradeable,
     ERC721EnumerableUpgradeable,
+    ERC165StorageUpgradeable,
     NameUtils,
-    Defs
-{
+    AddressResolver,
+    TextResolver
+ {
 
     event RegisterDomain(uint256 tokenId, bytes32 nameHash);
     
@@ -42,20 +47,6 @@ contract ERC721Registry is
     using SafeMathUpgradeable for uint256;
 
     CountersUpgradeable.Counter private _tokenIdCounter;
-
-    // expiry grace period
-    uint256 expiryGracePeriod = 90 days;
-
-    // registry info 
-    RegistryInfo  private _registryInfo;
-
-    // domain record registry
-    // namehash => domainRecord struct
-    mapping(bytes32 => DomainRecord)    private _domainRecords;
-    mapping(bytes32 => SubDomainRecord) private _subdomainRecords;
-
-    // reverse uint256 to namehash 
-    mapping(uint256 => bytes32) private _tokenIdsNameHashMap;
 
     /**
      * initialize the contract
@@ -80,6 +71,11 @@ contract ERC721Registry is
         // initialize roles
         __Roles_init();
 
+        //init address resolver 
+        __AddressResolver_init();
+
+        __TextResolver_init();
+
         // prices are in usdt
         DomainPrices memory _domainPrices = DomainPrices({
             _1Letter:      5000,
@@ -89,10 +85,9 @@ contract ERC721Registry is
             _5LettersPlus: 10
         });
 
-        // lets initiate registry
         _registryInfo = RegistryInfo({
-            name:               _tldName,
-            hash:               getTLDNameHash(_tldName),
+            label:              _tldName,
+            namehash:           getTLDNameHash(_tldName),
             assetAddress:       address(this),
             webHost:            _webHost,
             domainPrices:       _domainPrices,
@@ -117,28 +112,46 @@ contract ERC721Registry is
         _;
     }
 
+    modifier onlyOwner(uint256 tokenId) {
+        require(ownerOf(tokenId) == _msgSender(), "BNS#ERC721Registry: NOT_OWNER");
+        _;
+    }
+    
+
+    /**
+     * override isAuthorized
+     */
+    function isAuthorised(bytes32 node) internal override view returns(bool){
+        
+        if (_records[node].owner == _msgSender()) return true;
+
+        address owner = ownerOf(_records[node].tokenId);
+
+        if(owner == address(0)) return false;
+
+        return this.isApprovedForAll(owner, _msgSender());
+    }
+
 
     /**
      * @dev mint a token
      * @param _to the address to mint to
      * @param _label the name of the domain
-     * @param _duration how many years the domain should be minted for
      * @param _matadataKeys the meta data keys 
      * @param _metadataValues the metadata values
      */
     function _registerDomain(
         address _to,
         string   calldata _label,
-        uint256  _duration,
         string[] calldata _matadataKeys,
         string[] calldata _metadataValues
     ) 
         private 
         onlyValidLabel(_label)
         onlyMinter
-        returns(uint256 _tokenId, bytes32 _domainHash) 
+        returns(uint256 _tokenId, bytes32 _node) 
     {
-  
+        
         _tokenIdCounter.increment();
 
         _tokenId = _tokenIdCounter.current();
@@ -150,6 +163,8 @@ contract ERC721Registry is
         if(isAdmin(_msgSender())){
             minLabelLength = 1;
         }
+
+        require(_matadataKeys.length  == _metadataValues.length, "BNS#ERC721Registry: unmatched data size for metadata keys & values");
 
         //lets now create our record 
         require(
@@ -166,27 +181,46 @@ contract ERC721Registry is
         }
 
         //lets get the domain hash
-        _domainHash = nameHash(_label, _registryInfo.hash);
+        _node = nameHash(_label, _registryInfo.namehash);
 
         // lets check if the domainHash exists
-        require(_domainRecords[_domainHash].tokenId == 0, "BNS#ERC721Registry: Domain is taken");
+        require(_records[_node].tokenId == 0, "BNS#ERC721Registry: Domain is taken");
 
-
-        _domainRecords[_domainHash] = DomainRecord({
+        _records[_node] = Record({
             label:              _label,
-            hash:               _domainHash,
-            registryHash:       _registryInfo.hash,
+            namehash:           _node,
+            registryHash:       _registryInfo.namehash,
             tokenId:            _tokenId,
             owner:              _to,
-            addressMap:         _to, 
-            metadataKeys:       _matadataKeys,
-            metadataValues:     _metadataValues,
             createdAt:          block.timestamp,
             updatedAt:          block.timestamp
         });
 
+
         // lets create a reverse token id 
-        _tokenIdsNameHashMap[_tokenId] = _domainHash;
+        _tokenIdToNodeMap[_tokenId] = _node;
+    }
+
+    /**
+     * @dev register a subDomain
+     * @param _to the address to mint to
+     * @param _label the name of the domain
+     * @param _node the parent node to create the subdomain from
+     * @param _matadataKeys the meta data keys 
+     * @param _metadataValues the metadata values
+     */
+    function _registerSubdomain(
+        address           _to,
+        string   calldata _label,
+        bytes32           _node,
+        string[] calldata _matadataKeys,
+        string[] calldata _metadataValues
+    ) 
+        private 
+        onlyValidLabel(_label)
+        onlyAuthorized(_node)
+        returns(uint256 _tokenId, bytes32 _domainHash) 
+    {
 
     }
 
@@ -223,10 +257,12 @@ contract ERC721Registry is
         internal 
         virtual 
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
-    {
-
+    {   
+         
         // lets get the domain record and change the owner to the new owner
-        _domainRecords[_tokenIdsNameHashMap[tokenId]].owner = to;
+        _records[_tokenIdToNodeMap[tokenId]].owner = to;
+
+        delete _reverseAddress[from];
 
         super._beforeTokenTransfer(from, to, tokenId);
     }

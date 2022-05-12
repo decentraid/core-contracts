@@ -9,6 +9,11 @@ pragma solidity ^0.8.0;
 
 contract Defs {
 
+    enum NodeType  {
+        DOMAIN,
+        SUBDOMAIN
+    }
+
     struct DomainPrices {
         uint256  _1Letter;
         uint256  _2Letters;
@@ -18,8 +23,8 @@ contract Defs {
     }
 
     struct RegistryInfo {
-        string          name;
-        bytes32         hash;
+        string          label;
+        bytes32         namehash;
         address         assetAddress;
         string          webHost;
         uint            minDomainLength;
@@ -29,29 +34,15 @@ contract Defs {
         uint256         updatedAt;
     }
 
-    struct DomainRecord {
-        string   label;
-        bytes32  hash;
-        bytes32  registryHash;
-        uint256  tokenId;
-        address  owner;
-        address  addressMap;
-        string[] metadataKeys;
-        string[] metadataValues;
-        uint256  createdAt;
-        uint256  updatedAt;  
+    struct Record {
+        string      label;
+        bytes32     namehash;
+        bytes32     parentNode;
+        NodeType    nodeType;
+        uint256     tokenId;
+        address     owner;
+        uint256     createdAt;
+        uint256     updatedAt;  
     }
-
-    struct SubDomainRecord {
-        string   label;
-        bytes32  hash;
-        bytes32  parentHash; // the parent can be a domain or a subdomain
-        address  addressMap;
-        string[] metadataKeys;
-        string[] metadataValue;
-        uint256  createdAt;
-        uint256  updatedAt;  
-    }
-
 
 }
