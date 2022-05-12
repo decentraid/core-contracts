@@ -194,7 +194,7 @@ contract ERC721Registry is
             owner:              _to,
             createdAt:          block.timestamp,
             updatedAt:          block.timestamp
-        });
+        }); 
 
 
         // lets create a reverse token id 
