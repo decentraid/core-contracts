@@ -7,8 +7,9 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/Base64Upgradeable.sol";
+import "contracts/ContractBase.sol";
 
-contract NFTMetadata {
+contract NFTMetadata is ContractBase {
 
     function getTokenURI(
          uint256 tokenId
@@ -17,7 +18,11 @@ contract NFTMetadata {
         view 
         returns (string memory) 
     {
-        
+
+        // lets get the node 
+        Record memory _recordInfo = _records[_tokenIdToNodeMap[tokenId]];
+
+        require(recordExists(_recordInfo.namehash), "BNS#NFTMetadata: RECORD_DOES_NOT_EXIST");
     }
 
     /**
@@ -50,14 +55,25 @@ contract NFTMetadata {
         bytes memory svgImageData = abi.encodePacked(
             '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">',
                 '<style>',
-                    '.text { font: bold 36px Arial Black; fill: ', textColor ,'; text-anchor: middle; dominant-baseline: middle; textLength: 100%; }',
+                    '.__bns-doamin {',
+                        'font-size: 40px;',
+                        'font-weight:660;',
+                        'font-family: Courier, Verdana, Arial Black;',
+                        'fill: ', textColor ,';',
+                        'text-anchor: middle;'
+                        'dominant-baseline: middle',
+                        'textLength:',bytes(text).length+1,';',
+                        'letter-spacing: 5;',
+                    '}',
                 '<style>',   
                 '<defs>',
                     '<linearGradient id="lgrad" x1="0%" y1="50%" x2="100%" y2="50%">',
                         gColorsData,
                     '</linearGradient>',
                 '</defs>',
-                '<text class="text" x="50%" y="50%">', text ,'</text>',
+                '<text class="__bns-doamin" x="50%" y="50%">', 
+                    text,
+                '</text>',
                 '<rect x="0" y="0" width="100%" height="100%" fill="url(#lgrad)"/>',
             '</svg>'
         );

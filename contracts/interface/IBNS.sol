@@ -9,7 +9,7 @@ pragma solidity ^0.8.0;
 
 abstract contract IBNS {
     
-    // backward compactible with Ethereum ENS
+    /*/ backward compactible with Ethereum ENS
     function setRecord(bytes32 node, address owner, address resolver, uint64 ttl) external virtual;
     function setSubnodeRecord(bytes32 node, bytes32 label, address owner, address resolver, uint64 ttl) external virtual;
     function setSubnodeOwner(bytes32 node, bytes32 label, address owner) external virtual returns(bytes32);
@@ -22,5 +22,8 @@ abstract contract IBNS {
     function ttl(bytes32 node) external virtual view returns (uint64);
     function recordExists(bytes32 node) external virtual view returns (bool);
     function isApprovedForAll(address owner, address operator) external virtual view returns (bool);
+    */
+
+    function ownerOf(uint256 tokenId) public view virtual returns (address);
 
 }

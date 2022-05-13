@@ -7,8 +7,9 @@
 pragma solidity ^0.8.0;
 
 import "./DataStore.sol";
+import "contracts/utils/NameUtils.sol";
 
-contract ContractBase is DataStore {
+contract ContractBase is DataStore, NameUtils {
 
     function bytesToAddress(bytes memory b) internal pure returns(address payable a) {
         require(b.length == 20);
@@ -24,6 +25,11 @@ contract ContractBase is DataStore {
         }
     }
 
+    /**
+     * @dev returns the resolver 
+     * @param node to return the resolver
+     * @return address of the resolver 
+     */
     function resolver(bytes32 node) public virtual view returns (address) {
         return address(this);
     }
@@ -38,23 +44,88 @@ contract ContractBase is DataStore {
     }
 
     /**
+     * @dev generate a subdomain token id borrowed from unstoppable domain
+     * @param _tokenId the main domain token id
+     * @param _label the label to generate token id for 
+     * @return uint256 of the subdomain token Id
+     */
+    function subdomainTokenId(
+        uint256 _tokenId,
+        string memory _label
+    ) 
+        public 
+        view 
+        onlyValidLabel(_label) 
+        returns (uint256)
+    {
+        return uint256(keccak256(abi.encodePacked(_tokenId, keccak256(abi.encodePacked(_label)))));
+    }
+
+
+    /**
+     * @dev get the domain node from a subnode 
+     * @param the node to get its domain's node
+     * @return bytes32 of the domain node
+     */
+    function getDomainNode(bytes32 node) 
+        public
+        view 
+        returns(bytes32) 
+    {
+        if(_records[node].nodeType == NodeType.DOMAIN) {
+            return _records[node].namehash;
+        }
+
+        bytes32 parentNode = _records[node].parentNode;
+        
+        for(uint i = 0; i <= MAX_SUBDOMAIN_DEPTH; i++) {
+            
+            // if the parent node is tld, then its the domain
+            if(_records[parentNode].nodeType == NodeType.DOMAIN){
+                break;
+            } 
+            
+            parentNode = _records[parentNode].parentNode;
+        }
+
+        return parentNode;
+    }
+
+    /**
+     * @dev get the owner of a node, note that subnodes or subdomains will always belong to the nft owner for security sake
+     * @param node the node to get the owner 
+     * @return the owner's address of the node
+     */
+    function owner(
+        bytes32 node
+    ) 
+        public 
+        virtual 
+        view 
+        returns (address) 
+    {
+        
+        if(node == _registryInfo.namehash){
+            return address(0x0);
+        }
+
+        bytes32 parentNode = getDomainNode(node);
+
+        return __INSTANCE.ownerOf(parentNode.tokenId);
+    }
+
+
+    /**
      * @dev Returns whether a record has been imported to the registry.
      * @param node The specified node.
      * @return Bool if record exists
      */
-    function recordExists(bytes32 node) public virtual view returns (bool) {
-        return _records[node].owner != address(0x0);
+    function recordExists(bytes32 node) 
+        public 
+        view 
+        returns (bool) 
+    {
+        return _records[node].tokenId != address(0x0);
     }
-
-    function owner(bytes32 node) public virtual view returns (address) {
-        
-        address addr = _records[node].owner;
-
-        if (addr == address(this)) {
-            return address(0x0);
-        }
-
-        return addr;
-    }
-
+    
 }

@@ -8,8 +8,18 @@
 pragma solidity ^0.8.0;
 
 import "./Defs.sol";
+import "./interface/IBNS.sol";
 
 contract DataStore is Defs {
+
+    // self instance 
+    IBNS immutable __INSTANCE = IBNS(address(this));
+
+    // icann standard
+    uint constant public MAX_LABEL_LENGTH = 63;
+
+    // max subdomain depth
+    uint constant public MAX_SUBDOMAIN_DEPTH = 3;
 
     RegistryInfo                  internal    _registryInfo;
     mapping(bytes32 => Record)    internal     _records;

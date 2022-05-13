@@ -38,9 +38,9 @@ contract Defs {
     struct Record {
         string      label;
         bytes32     namehash;
-        bytes32     parentNode;
+        bytes32     parentNode; 
         NodeType    nodeType;
-        address     owner;
+        uint256     tokenId;
         uint256     createdAt;
         uint256     updatedAt;  
     }
