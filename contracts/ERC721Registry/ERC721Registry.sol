@@ -76,11 +76,11 @@ contract ERC721Registry is
 
         // prices are in usdt
         DomainPrices memory _domainPrices = DomainPrices({
-            _1Letter:      5000,
+            _1Letter:      6000,
             _2Letters:     3000,
-            _3Letters:     500,
-            _4Letters:     150,
-            _5LettersPlus: 10
+            _3Letters:     640,
+            _4Letters:     160,
+            _5LettersPlus: 16
         });
 
         _registryInfo = RegistryInfo({
