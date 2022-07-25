@@ -3,11 +3,12 @@
 * @website github.com/binance-name
 * @author Team BNS <hello@binance.name>
 * @license SPDX-License-Identifier: MIT
-*/
+*/ 
 pragma solidity ^0.8.0;
 
 import "./DataStore.sol";
-import "contracts/utils/NameUtils.sol";
+import "./utils/NameUtils.sol";
+import "./Defs.sol";
 
 contract ContractBase is DataStore, NameUtils {
 
@@ -64,7 +65,7 @@ contract ContractBase is DataStore, NameUtils {
 
     /**
      * @dev get the domain node from a subnode 
-     * @param the node to get its domain's node
+     * @param node the node to get its domain's node
      * @return bytes32 of the domain node
      */
     function getDomainNode(bytes32 node) 
@@ -76,19 +77,7 @@ contract ContractBase is DataStore, NameUtils {
             return _records[node].namehash;
         }
 
-        bytes32 parentNode = _records[node].parentNode;
-        
-        for(uint i = 0; i <= MAX_SUBDOMAIN_DEPTH; i++) {
-            
-            // if the parent node is tld, then its the domain
-            if(_records[parentNode].nodeType == NodeType.DOMAIN){
-                break;
-            } 
-            
-            parentNode = _records[parentNode].parentNode;
-        }
-
-        return parentNode;
+        return  _records[node].primaryNode;
     }
 
     /**
@@ -125,7 +114,7 @@ contract ContractBase is DataStore, NameUtils {
         view 
         returns (bool) 
     {
-        return _records[node].tokenId != address(0x0);
+        return _records[node].namehash != bytes32(0);
     }
     
 }

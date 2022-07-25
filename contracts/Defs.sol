@@ -38,6 +38,7 @@ contract Defs {
     struct Record {
         string      label;
         bytes32     namehash;
+        bytes32     primaryNode;
         bytes32     parentNode; 
         NodeType    nodeType;
         uint256     tokenId;

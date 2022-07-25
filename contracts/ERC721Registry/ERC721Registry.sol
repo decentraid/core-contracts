@@ -34,7 +34,6 @@ contract ERC721Registry is
     ERC721BurnableUpgradeable,
     ERC721EnumerableUpgradeable,
     ERC165StorageUpgradeable,
-    NameUtils,
     AddressResolver,
     TextResolver
  {
@@ -45,6 +44,8 @@ contract ERC721Registry is
     using SafeMathUpgradeable for uint256;
 
     CountersUpgradeable.Counter private _tokenIdCounter;
+
+
 
     /**
      * initialize the contract
@@ -136,14 +137,10 @@ contract ERC721Registry is
      * @dev mint a token
      * @param _to the address to mint to
      * @param _label the name of the domain
-     * @param _matadataKeys the meta data keys 
-     * @param _metadataValues the metadata values
      */
     function _registerDomain(
         address _to,
-        string   calldata _label,
-        string[] calldata _matadataKeys,
-        string[] calldata _metadataValues
+        string   calldata _label
     ) 
         private 
         onlyValidLabel(_label)
@@ -163,7 +160,7 @@ contract ERC721Registry is
             minLabelLength = 1;
         }
 
-        require(_matadataKeys.length  == _metadataValues.length, "BNS#ERC721Registry: unmatched data size for metadata keys & values");
+        //require(_matadataKeys.length  == _metadataValues.length, "BNS#ERC721Registry: unmatched data size for metadata keys & values");
 
         //lets now create our record 
         require(
@@ -189,6 +186,7 @@ contract ERC721Registry is
             label:              _label,
             namehash:           _node,
             parentNode:         _registryInfo.namehash,
+            primaryNode:        _registryInfo.namehash,
             nodeType:           NodeType.DOMAIN,
             tokenId:            _tokenId,
             owner:              _to,
@@ -203,25 +201,57 @@ contract ERC721Registry is
 
     /**
      * @dev register a subDomain
-     * @param _to the address to mint to
      * @param _label the name of the domain
-     * @param _node the parent node to create the subdomain from
-     * @param _matadataKeys the meta data keys 
-     * @param _metadataValues the metadata values
+     * @param _parentNode the parent node to create the subdomain from
      */
     function _registerSubdomain(
-        address           _to,
         string   calldata _label,
-        bytes32           _node,
-        string[] calldata _matadataKeys,
-        string[] calldata _metadataValues
+        bytes32           _parentNode
     ) 
         private 
         onlyValidLabel(_label)
-        onlyAuthorized(_node)
+        onlyAuthorized(_parentNode)
         returns(uint256 _tokenId, bytes32 _domainHash) 
     {
 
+        Record memory _parentRecord = _records[_parentNode];
+
+        require(_parentRecord.owner != address(0), "BNS#ERC721Registry#_registerSubdomain: _registerSubdomain parentNode was not found");
+
+        bytes32 _primaryNode;
+        Record memory _primaryDomain;
+
+        if(_parentRecord.nodeType == NodeType.DOMAIN){
+            _primaryNode = _parentRecord.namehash;
+             _primaryDomain = _parentRecord;
+        } else {
+            _primaryNode = _parentRecord.primaryNode;
+            _primaryDomain = _records[_primaryNode];
+        }
+
+        _tokenIdCounter.increment();
+
+        _tokenId = _tokenIdCounter.current();
+
+        _mint(_parentRecord.owner, _tokenId);
+
+        //lets get the subdomain hash
+        bytes32 _node = nameHash(_label, _parentNode);
+
+        _records[_node] = Record({
+            label:              _label,
+            namehash:           _node,
+            parentNode:         _parentNode,
+            primaryNode:        _primaryNode,
+            nodeType:           NodeType.SUBDOMAIN,
+            tokenId:            _tokenId,
+            owner:              address(0),
+            createdAt:          block.timestamp,
+            updatedAt:          block.timestamp
+        });
+    
+        // lets create a reverse token id 
+        _tokenIdToNodeMap[_tokenId] = _node;
     }
 
     //////////////////////////// Overrides Starts  //////////////////////////
@@ -258,7 +288,11 @@ contract ERC721Registry is
         virtual 
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
     {   
-         
+        
+        if(_records[_tokenIdToNodeMap[tokenId]].nodeType == NodeType.SUBDOMAIN){
+            revert("BNS#ERC721Registry#_registerSubdomain: Subdomains cannot be transferred");
+        }   
+
         // lets get the domain record and change the owner to the new owner
         _records[_tokenIdToNodeMap[tokenId]].owner = to;
 
@@ -285,6 +319,27 @@ contract ERC721Registry is
         returns (bool) 
     {
         return super.supportsInterface(interfaceId);
+    }
+
+
+    /**
+     * @dev See {IERC721-ownerOf}.
+     */
+    function ownerOf(uint256 tokenId) 
+        public 
+        view
+        override 
+        returns 
+        (address) 
+    {
+        
+        Record memory _record = _records[_tokenIdToNodeMap[tokenId]];
+        
+        if(_record.nodeType == NodeType.DOMAIN){
+            return super.ownerOf(tokenId);   
+        }
+
+        return super.ownerOf(_records[_record.primaryNode].tokenId); 
     }
 
     //////////////////////////// Overrides Ends  //////////////////////////
