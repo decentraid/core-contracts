@@ -100,7 +100,7 @@ contract ContractBase is DataStore, NameUtils {
 
         bytes32 parentNode = getDomainNode(node);
 
-        return __INSTANCE.ownerOf(parentNode.tokenId);
+        return __INSTANCE.ownerOf(_records[parentNode].tokenId);
     }
 
 

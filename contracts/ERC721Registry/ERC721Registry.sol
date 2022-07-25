@@ -123,11 +123,11 @@ contract ERC721Registry is
      */
     function isAuthorised(bytes32 node) internal override view returns(bool){
         
-        if (_records[node].owner == _msgSender()) return true;
-
         address owner = ownerOf(_records[node].tokenId);
 
         if(owner == address(0)) return false;
+
+        if(owner == _msgSender()) return true;
 
         return this.isApprovedForAll(owner, _msgSender());
     }
@@ -189,7 +189,6 @@ contract ERC721Registry is
             primaryNode:        _registryInfo.namehash,
             nodeType:           NodeType.DOMAIN,
             tokenId:            _tokenId,
-            owner:              _to,
             createdAt:          block.timestamp,
             updatedAt:          block.timestamp
         }); 
@@ -216,24 +215,25 @@ contract ERC721Registry is
 
         Record memory _parentRecord = _records[_parentNode];
 
-        require(_parentRecord.owner != address(0), "BNS#ERC721Registry#_registerSubdomain: _registerSubdomain parentNode was not found");
+        require(_parentRecord.createdAt > 0, "BNS#ERC721Registry#_registerSubdomain: _registerSubdomain parentNode was not found");
 
         bytes32 _primaryNode;
-        Record memory _primaryDomain;
+        Record memory _primaryRecord;
 
         if(_parentRecord.nodeType == NodeType.DOMAIN){
             _primaryNode = _parentRecord.namehash;
-             _primaryDomain = _parentRecord;
+             _primaryRecord = _parentRecord;
         } else {
             _primaryNode = _parentRecord.primaryNode;
-            _primaryDomain = _records[_primaryNode];
+            _primaryRecord = _records[_primaryNode];
         }
 
         _tokenIdCounter.increment();
 
         _tokenId = _tokenIdCounter.current();
+        
 
-        _mint(_parentRecord.owner, _tokenId);
+        _mint(ownerOf(_primaryRecord.tokenId), _tokenId);
 
         //lets get the subdomain hash
         bytes32 _node = nameHash(_label, _parentNode);
@@ -245,7 +245,6 @@ contract ERC721Registry is
             primaryNode:        _primaryNode,
             nodeType:           NodeType.SUBDOMAIN,
             tokenId:            _tokenId,
-            owner:              address(0),
             createdAt:          block.timestamp,
             updatedAt:          block.timestamp
         });
@@ -292,9 +291,6 @@ contract ERC721Registry is
         if(_records[_tokenIdToNodeMap[tokenId]].nodeType == NodeType.SUBDOMAIN){
             revert("BNS#ERC721Registry#_registerSubdomain: Subdomains cannot be transferred");
         }   
-
-        // lets get the domain record and change the owner to the new owner
-        _records[_tokenIdToNodeMap[tokenId]].owner = to;
 
         delete _reverseAddress[from];
 
