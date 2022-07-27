@@ -23,6 +23,8 @@ contract NFTMetadata is ContractBase {
         Record memory _recordInfo = _records[_tokenIdToNodeMap[tokenId]];
 
         require(recordExists(_recordInfo.namehash), "BNS#NFTMetadata: RECORD_DOES_NOT_EXIST");
+
+        return "";
     }
 
     /**
