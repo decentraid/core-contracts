@@ -14,6 +14,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../interface/IRegistry.sol";
 
 contract BNSCore is 
     Defs,
@@ -25,6 +26,8 @@ contract BNSCore is
 {
 
     event SetSigner(address indexed _oldSigner, address indexed  _newSigner);
+    event AffiliateShare(address indexed _referrer, address indexed _paymentToken, uint256 _shareAmount);
+    event RegisterDomain(string _tld, uint256 _tokenId, address indexed _to, address indexed _paymentToken, uint256 _amount);
 
     using SafeMathUpgradeable for uint256;
     using ECDSAUpgradeable for bytes32;
@@ -38,6 +41,9 @@ contract BNSCore is
 
     //check request authorization (default: true)
     bool _checkRequestAuth;
+
+    // affiliate share 
+    uint256 _affiliateSharePercent;
 
     /**
      * @dev initialize the contract
@@ -53,7 +59,8 @@ contract BNSCore is
         __Ownable_init();
 
         _signer = requestSigner;
-        _checkRequestAuth = true;
+        _checkRequestAuth       = true;
+        _affiliateSharePercent  = 500; // 5%  
     }
     
     function getRegistry(string memory _tld) 
@@ -86,37 +93,113 @@ contract BNSCore is
         string memory _label,
         string memory _tld,
         address paymentToken,
-        uint256 amount,
-        RequestAuthInfo memory _authInfo
+        //uint256 amount,
+        address affiliateAddr
+       // RequestAuthInfo memory _authInfo
     )
         public
+        onlyValidLabel(_tld)
         payable
     {
 
-        // request hash 
+        /*/ request hash 
         bytes32 paramHash = keccak256( abi.encodePacked(
             _label,
             _tld,
             paymentToken,
-            amount
+            amount,
+            affiliateAddr
         ));
 
         // validate request auth 
         validateRequestAuth(_authInfo, paramHash);
+        */
 
-        if(paymentToken == address(0)) {
-             require(msg.value >= amount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
-        } else {
+        address _tldRegistry = getRegistry(_tld);
 
-            IERC20 _erc20 = IERC20(paymentToken);
-            require( _erc20.balanceOf(_msgSender()) >= amount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
+        IRegistry _iregistry = IRegistry(_tldRegistry);
 
-            require(_erc20.transferFrom(_msgSender(), address(this), amount), "BNSCore#AMOUNT_TRANSFER_FAILED");
+
+        require(_tldRegistry != address(0), "BNSCore#registerDomain: INVALID_TLD");
+
+        if(amount > 0){
+            if(paymentToken == address(0)) {
+                require(msg.value >= amount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
+            } else {
+
+                IERC20 _erc20 = IERC20(paymentToken);
+                require( _erc20.balanceOf(_msgSender()) >= amount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
+
+                require(_erc20.transferFrom(_msgSender(), address(this), amount), "BNSCore#AMOUNT_TRANSFER_FAILED");
+            }
+
+            //send affiliate payment
+            processAffiliateShare(affiliateAddr, paymentToken, amount);
         }
 
+        (uint256 _tokenId,) = _iregistry.addDomain(_msgSender(), _tld);
+
+        emit RegisterDomain(
+            _tld,
+            _tokenId,  
+            _msgSender(), 
+            paymentToken, 
+            amount
+        );
 
     } //end 
 
+    /**
+     * doTransfer
+     */
+    function transferToken(
+        address tokenAddress, 
+        address payable _from,
+        address payable _to, 
+        uint256 amount
+    ) 
+        private 
+    {   
+        if(tokenAddress == address(0)){
+
+             (bool success, ) = _to.call{ value: amount }("");
+            require(success, "TransferBase#transfer: NATIVE_TRANSFER_FAILED");
+
+        } else {
+
+            IERC20 _erc20 = IERC20(tokenAddress);
+
+            require( _erc20.balanceOf(_msgSender()) >= amount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
+
+            if(_from == address(this)){
+                 require(_erc20.transfer(_to, amount), "BNSCore#ERC20_TRANSFER_FAILED");
+            } else {
+                require(_erc20.transferFrom(_from, _to, amount), "BNSCore#ERC20_TRANSFER_FROM_FAILED");
+            }
+        }
+    }
+
+
+    /**
+     * processAffiliateShare 
+     * @param _referrer address 
+     * @param _amount uint256 
+     */
+    function processAffiliateShare(
+        address _referrer, 
+        address _paymentToken,
+        uint256 _amount
+    )
+        private 
+    {
+        if(_referrer == address(0) || _amount == 0) return;
+
+        uint256 _shareAmount = percentToAmount(_affiliateSharePercent, _amount);
+
+        transferToken(_paymentToken, payable(address(this)), payable(_referrer), _shareAmount);
+
+        emit AffiliateShare( _referrer, _paymentToken, _shareAmount);
+    }
 
     /**
      * @dev Set signature signer.
@@ -172,5 +255,16 @@ contract BNSCore is
         }
     }
 
+
+    /**
+    * @dev convert percentage value in Basis Point System to amount or token value
+    * @param _percentInBps the percentage calue in basis point system
+    * @param _amount the amount to be used for calculation
+    * @return final value after calculation in uint256
+    */
+    function percentToAmount(uint256 _percentInBps, uint256 _amount) internal pure returns(uint256) {
+        //to get pbs,multiply percentage by 100
+        return  (_amount.mul(_percentInBps)).div(10_000);
+    }
 
 }

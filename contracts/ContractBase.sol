@@ -49,7 +49,7 @@ contract ContractBase is DataStore, NameUtils {
      * @param _tokenId the main domain token id
      * @param _label the label to generate token id for 
      * @return uint256 of the subdomain token Id
-     */
+     *
     function subdomainTokenId(
         uint256 _tokenId,
         string memory _label
@@ -60,7 +60,7 @@ contract ContractBase is DataStore, NameUtils {
         returns (uint256)
     {
         return uint256(keccak256(abi.encodePacked(_tokenId, keccak256(abi.encodePacked(_label)))));
-    }
+    }*/
 
 
     /**
@@ -114,7 +114,7 @@ contract ContractBase is DataStore, NameUtils {
         view 
         returns (bool) 
     {
-        return _records[node].namehash != bytes32(0);
+        return _records[node].createdAt > 0;
     }
     
 }

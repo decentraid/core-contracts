@@ -15,12 +15,14 @@ contract Defs {
         REGISTRY
     }
 
+
+    // by character length
     struct DomainPrices {
-        uint256  _1Letter;
-        uint256  _2Letters;
-        uint256  _3Letters;
-        uint256  _4Letters;
-        uint256  _5LettersPlus;
+        uint256  one;
+        uint256  two;
+        uint256  three;
+        uint256  four;
+        uint256  fivePlus;
     }
 
     struct RegistryInfo {

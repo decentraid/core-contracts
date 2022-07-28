@@ -18,7 +18,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
 import "contracts/Defs.sol";
-import "contracts/roles/Roles.sol";
+import "../roles/Roles.sol";
 import "contracts/utils/NameUtils.sol";
 import "contracts/ContractBase.sol";
 import "contracts/resolvers/AddressResolver.sol";
@@ -39,13 +39,15 @@ contract ERC721Registry is
  {
 
     event RegisterDomain(uint256 tokenId, bytes32 nameHash);
+    event SetPrices(uint25 oldPrices, uint256 newPrices);
+    event MintDomain(uint256 _tokenId, address _to);
+    event MintSubdomain(uint256 _tokenId, address _to);
+
     
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeMathUpgradeable for uint256;
 
     CountersUpgradeable.Counter private _tokenIdCounter;
-
-
 
     /**
      * initialize the contract
@@ -75,13 +77,13 @@ contract ERC721Registry is
 
         __TextResolver_init();
 
-        // prices are in usdt
+        // prices are in busd
         DomainPrices memory _domainPrices = DomainPrices({
-            _1Letter:      6000,
-            _2Letters:     3000,
-            _3Letters:     680,
-            _4Letters:     200,
-            _5LettersPlus: 25
+            one:        6000 * (10 ** 18),
+            two:        3000 * (10 ** 18),
+            three:      680  * (10 ** 18),
+            four:       200  * (10 ** 18),
+            fivePlus:   25   * (10 ** 18)
         });
 
         _registryInfo = RegistryInfo({
@@ -112,10 +114,11 @@ contract ERC721Registry is
         _;
     }
 
-    modifier onlyOwner(uint256 tokenId) {
+    modifier onlyTokenOwner(uint256 tokenId) {
         require(ownerOf(tokenId) == _msgSender(), "BNS#ERC721Registry: NOT_OWNER");
         _;
     }
+
     
 
     /**
@@ -132,13 +135,54 @@ contract ERC721Registry is
         return this.isApprovedForAll(owner, _msgSender());
     }
 
+    /**
+     * @dev setDomainPrices 
+     * @param domainPrice 
+     */
+    function setPrices(DomainPrices memory domainPrices_) 
+        public
+        onlyAdmin
+    {
+        uint256 _oldPrices = _domainPrices;
+        _domainPrices = domainPrices_;
+        emit SetPrices(_oldPrices, _domainPrices);
+    }
+
+    /**
+     * getPrices
+     */
+    function getPrices() public view returns (DomainPrices memory) {
+        return _domainPrices;
+    }
+
+    /**
+     * @dev get domain price 
+     * @param _label the label part of a domain
+     */
+    function getPrice(string memory _label) 
+        public 
+        view
+        onlyValidLabel(_label)
+        returns(uint256)
+    {
+        uint labelSize = bytes(_label).length;
+        uint256 _p;
+
+        if(labelSize == 1)      _p = _domainPrices[one];
+        else if(labelSize == 2) _p = _domainPrices[two];
+        else if(labelSize == 3) _p = _domainPrices[three];
+        else if(labelSize == 4) _p = _domainPrices[four];
+        else _p = _domainPrices[fivePlus];
+
+        return _p;
+    }
 
     /**
      * @dev mint a token
      * @param _to the address to mint to
      * @param _label the name of the domain
      */
-    function _registerDomain(
+    function _mintDomain(
         address _to,
         string   calldata _label
     ) 
@@ -163,10 +207,10 @@ contract ERC721Registry is
         //require(_matadataKeys.length  == _metadataValues.length, "BNS#ERC721Registry: unmatched data size for metadata keys & values");
 
         //lets now create our record 
-        require(
-            bytes(_label).length >= minLabelLength, 
-            string(abi.encodePacked("BNS#ERC721Registry: label must exceed ", _registryInfo.minDomainLength, " characters"))
-        );
+        //require(
+        //    bytes(_label).length >= minLabelLength, 
+        //    string(abi.encodePacked("BNS#ERC721Registry: label must exceed ", _registryInfo.minDomainLength, " characters"))
+        //);
     
         // _registryInfo.maxDomainLength == 0 means no limit
         if(_registryInfo.maxDomainLength > 0) {
@@ -196,6 +240,21 @@ contract ERC721Registry is
 
         // lets create a reverse token id 
         _tokenIdToNodeMap[_tokenId] = _node;
+
+       emit MintDomain(_tokenId, _to);
+    }
+
+
+    function addDomain(
+        address _to,
+        string   calldata _label
+    ) 
+        public 
+        onlyValidLabel(_label)
+        onlyMinter
+        returns(uint256 _tokenId, bytes32 _node) 
+    {
+        return _mintDomain(_to, _label);
     }
 
     /**
@@ -203,7 +262,7 @@ contract ERC721Registry is
      * @param _label the name of the domain
      * @param _parentNode the parent node to create the subdomain from
      */
-    function _registerSubdomain(
+    function _mintSubdomain(
         string   calldata _label,
         bytes32           _parentNode
     ) 
@@ -251,7 +310,28 @@ contract ERC721Registry is
     
         // lets create a reverse token id 
         _tokenIdToNodeMap[_tokenId] = _node;
+
+        emit MintSubdomain(_tokenId, _to);
     }
+
+    /**
+     * @dev register a subDomain
+     * @param _label the name of the domain
+     * @param _parentNode the parent node to create the subdomain from
+     */
+    function addSubdomain(
+        string   calldata _label,
+        bytes32           _parentNode
+    ) 
+        private 
+        onlyValidLabel(_label)
+        onlyAuthorized(_parentNode)
+        returns(uint256 _tokenId, bytes32 _domainHash) 
+    {
+        return _mintSubdomain(_label, _parentNode);
+
+    }
+
 
     //////////////////////////// Overrides Starts  //////////////////////////
 
