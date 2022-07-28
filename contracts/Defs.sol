@@ -46,4 +46,13 @@ contract Defs {
         uint256     updatedAt;  
     }
 
+    /**
+     * request auth info
+     */
+    struct RequestAuthInfo {
+        bytes32     authKey; // auth string
+        bytes       signature; // auth signature
+        uint256     expiry; // expiry
+    }
+
 }
