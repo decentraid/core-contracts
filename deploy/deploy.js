@@ -9,6 +9,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
     try{
 
+        let deployedData = {}
         let deployedTLDInfo = {}
 
         const {deploy} = deployments;
@@ -20,9 +21,33 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         Utils.successMsg(`owner: ${owner}`)
         Utils.successMsg(`networkName: ${networkName}`)
         Utils.successMsg(`chainId: ${chainId}`)
-        
+
+        /////////////// DEPLOYING PUBLIC RESOLVER & REGISTRAR ////////
+        Utils.infoMsg("Deploying TLDS BNS Public Registrar Contract")
+
+        let deployedtRegistrarContract = await deploy('BNS', {
+            from: owner,
+            log: true,
+            proxy: {
+                owner: owner,
+                proxyContract: "OpenZeppelinTransparentProxy",
+                execute: {
+                  methodName: "initialize",
+                  args: [
+                      
+                    ]
+                }
+            }
+            
+        });
+
+        Utils.successMsg(`Registrar Deloyed: ${deployedtRegistrarContract.address}`);
+
+        deployedData["registrar"] = deployedtRegistrarContract.address;
+
+        ///////// END PUBLIC RESOLVER & REGISTRAR /////////
       
-        Utils.infoMsg("Deploying TLDS ERC721Registry Contract")
+        Utils.infoMsg("Deploying TLDS BNSRegistry Contract")
 
         for(let tldObj of tldsArray){
 
@@ -30,7 +55,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
             Utils.infoMsg(`Deploying ${tldObj.name} ERC721Registry Contract`)
 
-            let deployedRegistryContract = await deploy('ERC721Registry', {
+            let deployedRegistryContract = await deploy('BNSRegistry', {
                 from: owner,
                 log: true,
         
@@ -57,9 +82,10 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
             deployedTLDInfo[tldObj.tldName] = tldContractAddress;
         }
 
+        deployedData["registries"] = deployedTLDInfo;
         ///////////////////////// EXPORT CONTRACT INFO /////////////////////
 
-
+        
     } catch(e) {
         console.log(e,e.stack)
     }
