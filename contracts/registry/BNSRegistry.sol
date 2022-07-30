@@ -103,6 +103,19 @@ contract BNSRegistry is
         
     }
 
+
+    /**
+     * @dev registryInfo sends the registry info
+     * @return RegistryInfo
+     */
+    function getRegistryInfo() 
+        public 
+        view 
+        returns(RegistryInfo memory) 
+    {
+        return _registryInfo;
+    }
+
     /**
      * @dev if token exists 
      * @param tokenId the token id

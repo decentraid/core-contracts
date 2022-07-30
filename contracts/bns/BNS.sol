@@ -30,6 +30,8 @@ contract BNS is
     event AffiliateShare(address indexed _referrer, address indexed _paymentToken, uint256 _shareAmount);
     event RegisterDomain(string _tld, uint256 _tokenId, address indexed _to, address indexed _paymentToken, uint256 _amount);
     event SetPriceSlippageToleranceRate(uint256 _valueBPS);
+    event AddTLD(string _name, address _addr, bytes32 _node);
+
 
     using SafeMathUpgradeable for uint256;
     using ECDSAUpgradeable for bytes32;
@@ -56,7 +58,6 @@ contract BNS is
 
     /// end registered domains //// 
 
-    
 
     // request signer 
     address _signer;
@@ -106,9 +107,53 @@ contract BNS is
     )
         public 
         onlyOwner
+        onlyValidLabel(_name)
     {
 
+        bytes32 _node = getTLDNameHash(_name);
+
+        require(_registry[_node] != address(0), "BNS#addTLD: TLD_ALREADY_EXISTS");
+
+        _registry[_node] = _addr;
+
+        _registryIndexes.push(_node);
+
+        emit AddTLD(_name, _addr, _node);
     } //end
+
+
+    /**
+     * @dev getTLD fetch a told using the name
+     * @param _tld the name of the tld 
+     * @return _regInfo IRegistry
+     */
+    function getTLD(string memory _tld) 
+        public
+        view 
+        returns (RegistryInfo memory _regInfo)
+    {   
+        bytes32 _node = getTLDNameHash(_tld);
+        address registryAddr = _registry[_node];
+
+        if(registryAddr == address(0)){
+            return _regInfo;
+        }    
+
+        _regInfo = IRegistry(registryAddr).getRegistryInfo();
+    } //end 
+
+
+    /**
+     * @dev getAllTLDs fetch a told using the name
+     * @return IRegistry[]
+     */
+    function getAllTLDs() 
+        public
+        view 
+        returns (RegistryInfo[] memory)
+    {   
+        
+    }
 
     /**
      * @dev set Price deviation rate tolerance, the rate in % at which the price can fall to
