@@ -54,9 +54,17 @@ contract BNS is
     ///// Registered domains ////////
     
     uint256 _totalRegisteredDomains;
-    mapping(uint256 => RegisteredDomainDef) private _registeredDomains;
 
-    /// end registered domains //// 
+    mapping(uint256 => RegisteredDomainDef) private _registeredDomains;
+    
+    mapping(bytes32 => uint256) private _registeredDomainsNodeIndexes;
+
+    // tld indexes
+    mapping(bytes32 => uint256[]) private _registeredDomainsTLDIndexes;
+
+    mapping(address => uint256[]) private _registeredDomainsAccountIndexes;
+
+    ///  End Registered Domains //// 
 
 
     // request signer 
@@ -152,7 +160,14 @@ contract BNS is
         view 
         returns (RegistryInfo[] memory)
     {   
-        
+
+        RegistryInfo[] memory _regDataArray = new RegistryInfo[](_registryIndexes.length + 1);
+
+        for(uint256 i=0; i<= _registryIndexes.length; i++) {
+            _regDataArray[i] = IRegistry(_registry[_registryIndexes[i]]).getRegistryInfo();
+        }
+
+        return _regDataArray;
     }
 
     /**
@@ -256,6 +271,23 @@ contract BNS is
         
 
         (uint256 _tokenId, bytes32 _node) = _iregistry.addDomain(_msgSender(), _tld);
+
+        uint256 _domainId = _totalRegisteredDomains++;
+
+        _registeredDomains[_domainId] = RegisteredDomainDef({
+            assetAddress:   _tldRegistry,
+            tokenId:        _tokenId,
+            node:           _node,
+            userAddress:    _msgSender()
+        });
+
+        // add to user's domains collection
+        _registeredDomainsAccountIndexes[_msgSender()].push(_domainId);
+
+        // add to tld collection
+        _registeredDomainsTLDIndexes[getTLDNameHash(_tld)].push(_domainId);
+
+        
 
         emit RegisterDomain(
             _tld,

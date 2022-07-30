@@ -66,10 +66,10 @@ contract Defs {
         uint256     expiry; // expiry
     }
 
-
     struct RegisteredDomainDef {
-        address     _assetAddress;
-        uint256     _tokenId;
-        address     _account;   
+        address   assetAddress;
+        uint256   tokenId;
+        bytes32   node;
+        address   userAddress;
     }
 }
