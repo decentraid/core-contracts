@@ -23,13 +23,13 @@ contract BNS is
     Initializable,
     ContextUpgradeable,
     OwnableUpgradeable,
-    priceFeed
+    PriceFeed
 {
 
     event SetSigner(address indexed _oldSigner, address indexed  _newSigner);
     event AffiliateShare(address indexed _referrer, address indexed _paymentToken, uint256 _shareAmount);
     event RegisterDomain(string _tld, uint256 _tokenId, address indexed _to, address indexed _paymentToken, uint256 _amount);
-    event SetPriceSlippageToleranceRate(uint25 _valueBPS);
+    event SetPriceSlippageToleranceRate(uint256 _valueBPS);
 
     using SafeMathUpgradeable for uint256;
     using ECDSAUpgradeable for bytes32;
@@ -202,7 +202,7 @@ contract BNS is
             paymentToken, 
             tokenAmount
         );
-        
+
     } //end 
 
     /**

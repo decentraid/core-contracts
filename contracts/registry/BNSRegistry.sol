@@ -39,7 +39,7 @@ contract BNSRegistry is
  {
 
     event RegisterDomain(uint256 tokenId, bytes32 nameHash);
-    event SetPrices(uint256 oldPrices, uint256 newPrices);
+    event SetPrices();
     event MintDomain(uint256 _tokenId, address _to);
     event MintSubdomain(uint256 _tokenId, address _to);
 
@@ -118,7 +118,7 @@ contract BNSRegistry is
     }
 
     modifier onlyTokenOwner(uint256 tokenId) {
-        require(ownerOf(tokenId) == _msgSender(), "BNS#ERC721Registry: NOT_OWNER");
+        require(ownerOf(tokenId) == _msgSender(), "BNSRegistry: NOT_OWNER");
         _;
     }
 
@@ -139,15 +139,14 @@ contract BNSRegistry is
 
     /**
      * @dev setDomainPrices 
-     * @param domainPrice 
+     * @param domainPrices_ the domain prices object
      */
     function setPrices(DomainPrices memory domainPrices_) 
         public
         onlyAdmin
     {
-        uint256 _oldPrices = _domainPrices;
         _domainPrices = domainPrices_;
-        emit SetPrices(_oldPrices, _domainPrices);
+        emit SetPrices();
     }
 
     /**
@@ -166,15 +165,19 @@ contract BNSRegistry is
         view
         onlyValidLabel(_label)
         returns(uint256)
-    {
+    {   
+        
         uint labelSize = bytes(_label).length;
+
+        require(labelSize > 0, "BNSRegistry#LABEL_REQUIRED");
+
         uint256 _p;
 
-        if(labelSize == 1)      _p = _domainPrices[one];
-        else if(labelSize == 2) _p = _domainPrices[two];
-        else if(labelSize == 3) _p = _domainPrices[three];
-        else if(labelSize == 4) _p = _domainPrices[four];
-        else                    _p = _domainPrices[fivePlus];
+        if(labelSize == 1)      _p = _domainPrices.one;
+        else if(labelSize == 2) _p = _domainPrices.two;
+        else if(labelSize == 3) _p = _domainPrices.three;
+        else if(labelSize == 4) _p = _domainPrices.four;
+        else                    _p = _domainPrices.fivePlus;
 
         return _p;
     }
@@ -209,24 +212,24 @@ contract BNSRegistry is
         //require(_matadataKeys.length  == _metadataValues.length, "BNS#ERC721Registry: unmatched data size for metadata keys & values");
 
         //lets now create our record 
-        //require(
-        //    bytes(_label).length >= minLabelLength, 
-        //    string(abi.encodePacked("BNS#ERC721Registry: label must exceed ", _registryInfo.minDomainLength, " characters"))
-        //);
+        require(
+            bytes(_label).length >= minLabelLength, 
+            string(abi.encodePacked("BNSRegistry#_mintDomain: LABEL_MUST_EXCEED_", _registryInfo.minDomainLength, "_CHARACTERS"))
+        );
     
         // _registryInfo.maxDomainLength == 0 means no limit
-        if(_registryInfo.maxDomainLength > 0) {
+        /*if(_registryInfo.maxDomainLength > 0) {
             require(
                 bytes(_label).length <= _registryInfo.maxDomainLength, 
-                string(abi.encodePacked("BNS#ERC721Registry: label must not exceed ", _registryInfo.minDomainLength, " characters"))
+                string(abi.encodePacked("BNSRegistry#_mintDomain: label must not exceed ", _registryInfo.minDomainLength, " characters"))
             );
-        }
+        }*/
 
         //lets get the domain hash
         _node = nameHash(_label, _registryInfo.namehash);
 
         // lets check if the domainHash exists
-        require(_records[_node].tokenId == 0, "BNS#ERC721Registry: Domain is taken");
+        require(_records[_node].tokenId == 0, "BNSRegistry#_mintDomain: DOMAIN_TAKEN");
 
         _records[_node] = Record({
             label:              _label,
@@ -271,12 +274,12 @@ contract BNSRegistry is
         private 
         onlyValidLabel(_label)
         onlyAuthorized(_parentNode)
-        returns(uint256 _tokenId, bytes32 _domainHash) 
+        returns(uint256 _tokenId, bytes32 _node) 
     {
 
         Record memory _parentRecord = _records[_parentNode];
 
-        require(_parentRecord.createdAt > 0, "BNS#ERC721Registry#_registerSubdomain: _registerSubdomain parentNode was not found");
+        require(_parentRecord.createdAt > 0, "BNSRegistry#_mintSubdomain: PARENT_NODE_NOT_FOUND");
 
         bytes32 _primaryNode;
         Record memory _primaryRecord;
@@ -298,7 +301,7 @@ contract BNSRegistry is
         _mint(_to, _tokenId);
 
         //lets get the subdomain hash
-        bytes32 _node = nameHash(_label, _parentNode);
+        _node = nameHash(_label, _parentNode);
 
         _records[_node] = Record({
             label:              _label,
@@ -372,7 +375,7 @@ contract BNSRegistry is
     {   
         
         if(_records[_tokenIdToNodeMap[tokenId]].nodeType == NodeType.SUBDOMAIN){
-            revert("BNS#ERC721Registry#_registerSubdomain: Subdomains cannot be transferred");
+            revert("BNSRegistry#_beforeTokenTransfer: SUBDOMAINS_NOT_TRANSFERABLE");
         }   
 
         delete _reverseAddress[from];
