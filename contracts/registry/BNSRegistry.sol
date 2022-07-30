@@ -1,6 +1,6 @@
 /** 
 * Binance Name Service
-* @website github.com/binance-name
+* @website github.com/bnsprotocol
 * @author Team BNS <hello@binance.name>
 * @license SPDX-License-Identifier: MIT
 */
@@ -25,7 +25,7 @@ import "contracts/resolvers/AddressResolver.sol";
 import "contracts/resolvers/TextResolver.sol";
 import "hardhat/console.sol";
 
-contract ERC721Registry is
+contract BNSRegistry is
     ContractBase,
     Roles,
     ERC721Upgradeable,
@@ -39,7 +39,7 @@ contract ERC721Registry is
  {
 
     event RegisterDomain(uint256 tokenId, bytes32 nameHash);
-    event SetPrices(uint25 oldPrices, uint256 newPrices);
+    event SetPrices(uint256 oldPrices, uint256 newPrices);
     event MintDomain(uint256 _tokenId, address _to);
     event MintSubdomain(uint256 _tokenId, address _to);
 
@@ -48,6 +48,9 @@ contract ERC721Registry is
     using SafeMathUpgradeable for uint256;
 
     CountersUpgradeable.Counter private _tokenIdCounter;
+
+    // domain prices data 
+    DomainPrices  _domainPrices;
 
     /**
      * initialize the contract
@@ -77,8 +80,8 @@ contract ERC721Registry is
 
         __TextResolver_init();
 
-        // prices are in busd
-        DomainPrices memory _domainPrices = DomainPrices({
+        // set default prices in busd
+        _domainPrices = DomainPrices({
             one:        6000 * (10 ** 18),
             two:        3000 * (10 ** 18),
             three:      680  * (10 ** 18),
@@ -120,7 +123,6 @@ contract ERC721Registry is
     }
 
     
-
     /**
      * override isAuthorized
      */
@@ -172,7 +174,7 @@ contract ERC721Registry is
         else if(labelSize == 2) _p = _domainPrices[two];
         else if(labelSize == 3) _p = _domainPrices[three];
         else if(labelSize == 4) _p = _domainPrices[four];
-        else _p = _domainPrices[fivePlus];
+        else                    _p = _domainPrices[fivePlus];
 
         return _p;
     }
@@ -291,8 +293,9 @@ contract ERC721Registry is
 
         _tokenId = _tokenIdCounter.current();
         
+        address _to = ownerOf(_primaryRecord.tokenId);
 
-        _mint(ownerOf(_primaryRecord.tokenId), _tokenId);
+        _mint(_to, _tokenId);
 
         //lets get the subdomain hash
         bytes32 _node = nameHash(_label, _parentNode);

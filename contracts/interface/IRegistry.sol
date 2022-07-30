@@ -11,7 +11,7 @@ import "../Defs.sol";
 
 abstract contract IRegistry is Defs {
 
-      function addDomain(
+    function addDomain(
         address _to,
         string   calldata _label
     ) virtual public returns(uint256, bytes32);

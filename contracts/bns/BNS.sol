@@ -7,7 +7,7 @@
 pragma solidity ^0.8.0;
 
 import "../utils/NameUtils.sol";
-import "contracts/Defs.sol";
+//import "contracts/Defs.sol"; // in IRegistry
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -15,25 +15,44 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interface/IRegistry.sol";
+import "../priceFeed/PriceFeed.sol";
 
-contract BNSCore is 
+contract BNS is 
     Defs,
     NameUtils,
     Initializable,
     ContextUpgradeable,
-    OwnableUpgradeable
-    
+    OwnableUpgradeable,
+    priceFeed
 {
 
     event SetSigner(address indexed _oldSigner, address indexed  _newSigner);
     event AffiliateShare(address indexed _referrer, address indexed _paymentToken, uint256 _shareAmount);
     event RegisterDomain(string _tld, uint256 _tokenId, address indexed _to, address indexed _paymentToken, uint256 _amount);
+    event SetPriceSlippageToleranceRate(uint25 _valueBPS);
 
     using SafeMathUpgradeable for uint256;
     using ECDSAUpgradeable for bytes32;
 
     // node => registry address 
     mapping(bytes32 => address) private _registry;
+    
+    //// Payment Tokens //////
+
+    // total payment tokens 
+    uint256 _totalPaymentTokens;
+
+    mapping(uint256 => PaymentTokenDef) private _paymentTokens;
+    mapping(address => uint256) private _paymentTokensIndexes;
+    ////// End Payment Token ////
+
+    ///// Registered domains ////////
+    
+    uint256 _totalRegisteredDomains;
+    mapping(uint256 => RegisteredDomainDef) private _registeredDomains;
+
+    /// end registered domains //// 
+
     bytes32[] private _registryIndexes;
 
     // request signer 
@@ -45,12 +64,19 @@ contract BNSCore is
     // affiliate share 
     uint256 _affiliateSharePercent;
 
+    // stable coin contract
+    address _defaultStableCoinAddr;
+
+    uint256 _priceSlippageToleranceRate;
+
     /**
      * @dev initialize the contract
      * @param requestSigner the address used for signing authorized request
+     * @param defaultStableCoinAddr stable stablecoin address
      */
     function initialize(
-        address requestSigner
+        address requestSigner,
+        address defaultStableCoinAddr
     ) 
         public 
         initializer
@@ -61,8 +87,29 @@ contract BNSCore is
         _signer = requestSigner;
         _checkRequestAuth       = true;
         _affiliateSharePercent  = 500; // 5%  
+        _defaultStableCoinAddr  = defaultStableCoinAddr;
+
+        _priceSlippageToleranceRate = 50; // 0.5
+    }
+
+
+    /**
+     * @dev set Price deviation rate tolerance, the rate in % at which the price can fall to
+     * @param valueBPS value in basis point 
+     */
+    function setPriceSlippageToleranceRate(uint256 valueBPS) 
+        public 
+        onlyOwner
+    {
+        _priceSlippageToleranceRate = valueBPS;
+        emit SetPriceSlippageToleranceRate(valueBPS);
     }
     
+    /**
+     * @dev get a registry address
+     * @param _tld the top level domain name in string example: cake
+     * @return address 
+     */
     function getRegistry(string memory _tld) 
         public 
         view 
@@ -71,6 +118,11 @@ contract BNSCore is
         return _registry[getTLDNameHash(_tld)];
     }
 
+    /**
+     * @dev get a registry address
+     * @param _tld the top level domain name in bytes32 example: cake
+     * @return address 
+     */
     function getRegistry(bytes32 _tld) 
         public 
         view 
@@ -80,7 +132,8 @@ contract BNSCore is
     }
 
     /**
-     * ENS resolver 
+     * @dev this retuens the resolver address when the node is provided
+     * @param node the tld node in bytes32
      */
     function resolver(bytes32 node) public view returns (address) {
         return getRegistry(node);
@@ -88,65 +141,68 @@ contract BNSCore is
 
     /**
      * @dev register a domain
+     * @param  _label the text part of the domain without the tld extension
+     * @param _tld the domain tld part
+     * @param paymentToken the contract address of the payment mode 0x0 for native 
+     * @param affiliateAddr the affiliate address who refered the user
      */
     function registerDomain(
         string memory _label,
         string memory _tld,
         address paymentToken,
-        //uint256 amount,
         address affiliateAddr
-       // RequestAuthInfo memory _authInfo
     )
         public
         onlyValidLabel(_tld)
         payable
     {
-
-        /*/ request hash 
-        bytes32 paramHash = keccak256( abi.encodePacked(
-            _label,
-            _tld,
-            paymentToken,
-            amount,
-            affiliateAddr
-        ));
-
-        // validate request auth 
-        validateRequestAuth(_authInfo, paramHash);
-        */
+   
 
         address _tldRegistry = getRegistry(_tld);
 
-        IRegistry _iregistry = IRegistry(_tldRegistry);
-
-
         require(_tldRegistry != address(0), "BNSCore#registerDomain: INVALID_TLD");
 
-        if(amount > 0){
-            if(paymentToken == address(0)) {
-                require(msg.value >= amount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
-            } else {
+        IRegistry _iregistry = IRegistry(_tldRegistry);
 
-                IERC20 _erc20 = IERC20(paymentToken);
-                require( _erc20.balanceOf(_msgSender()) >= amount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
+        uint256 amountUSDT = _iregistry.getPrice(_label);
 
-                require(_erc20.transferFrom(_msgSender(), address(this), amount), "BNSCore#AMOUNT_TRANSFER_FAILED");
+        PaymentTokenDef memory _pTokenInfo = _paymentTokens[_paymentTokensIndexes[paymentToken]];
+
+        uint256 tokenAmount = PriceFeed.toTokenAmount(amountUSDT, _pTokenInfo);
+
+        if(paymentToken == address(0)) {
+
+     
+            if(_priceSlippageToleranceRate > 0){
+                
+                uint256 priceSlippageToleranceAmt = percentToAmount(_priceSlippageToleranceRate, tokenAmount);
+                tokenAmount = (tokenAmount - priceSlippageToleranceAmt);
             }
 
-            //send affiliate payment
-            processAffiliateShare(affiliateAddr, paymentToken, amount);
+            require(msg.value >= tokenAmount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
+
+        } else {
+
+            IERC20 _erc20 = IERC20(paymentToken);
+            require( _erc20.balanceOf(_msgSender()) >= tokenAmount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
+
+            require(_erc20.transferFrom(_msgSender(), address(this), tokenAmount), "BNSCore#AMOUNT_TRANSFER_FAILED");
         }
 
-        (uint256 _tokenId,) = _iregistry.addDomain(_msgSender(), _tld);
+        //send affiliate payment
+        processAffiliateShare(affiliateAddr, paymentToken, tokenAmount);
+        
+
+        (uint256 _tokenId, bytes32 _node) = _iregistry.addDomain(_msgSender(), _tld);
 
         emit RegisterDomain(
             _tld,
             _tokenId,  
             _msgSender(), 
             paymentToken, 
-            amount
+            tokenAmount
         );
-
+        
     } //end 
 
     /**

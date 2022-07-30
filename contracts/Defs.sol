@@ -15,6 +15,15 @@ contract Defs {
         REGISTRY
     }
 
+    struct PaymentTokenDef {
+        address tokenAddress;
+        bytes32 priceFeedSource; // chainlink or pancakeswap
+        address priceFeedContract;
+        address dexPairToken;
+        bool    enabled;
+        uint256 addedOn;
+        uint256 updatedOn; 
+    }
 
     // by character length
     struct DomainPrices {
@@ -57,4 +66,10 @@ contract Defs {
         uint256     expiry; // expiry
     }
 
+
+    struct RegisteredDomainDef {
+        address     _assetAddress;
+        uint256     _tokenId;
+        address     _account;   
+    }
 }
