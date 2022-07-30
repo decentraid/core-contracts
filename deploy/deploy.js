@@ -85,7 +85,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         deployedData["registries"] = deployedTLDInfo;
         ///////////////////////// EXPORT CONTRACT INFO /////////////////////
 
-        
+        console.log("deployedData===>", deployedData)
     } catch(e) {
         console.log(e,e.stack)
     }

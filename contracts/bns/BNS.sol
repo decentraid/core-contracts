@@ -34,8 +34,11 @@ contract BNS is
     using SafeMathUpgradeable for uint256;
     using ECDSAUpgradeable for bytes32;
 
+    ////////////// Rgistries ///////////////
     // node => registry address 
-    mapping(bytes32 => address) private _registry;
+
+    mapping(bytes32  => address) private _registry;
+    bytes32[] private _registryIndexes;
     
     //// Payment Tokens //////
 
@@ -53,7 +56,7 @@ contract BNS is
 
     /// end registered domains //// 
 
-    bytes32[] private _registryIndexes;
+    
 
     // request signer 
     address _signer;
@@ -92,6 +95,20 @@ contract BNS is
         _priceSlippageToleranceRate = 50; // 0.5
     }
 
+    /**
+     * @dev addTLD adds a deployed tld info
+     * @param _name the tld name 
+     * @param _addr the tld contract address
+     */
+    function addTLD(
+        string memory _name,
+        address _addr
+    )
+        public 
+        onlyOwner
+    {
+
+    } //end
 
     /**
      * @dev set Price deviation rate tolerance, the rate in % at which the price can fall to
