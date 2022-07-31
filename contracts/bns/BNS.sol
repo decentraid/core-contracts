@@ -417,68 +417,6 @@ contract BNS is
     }
 
 
-    /**
-     * @dev get registered domains
-     * @param startId the id to start the data
-     * @param endId  the id to end fetching data
-     * @param sort there are two orders, 0 for ascending and 1 for descending
-     */
-    function getRegisteredDomains(
-        uint256 startId,
-        uint256 endId,
-        SortOrder sort
-    ) 
-        public 
-        view
-        returns (RegisteredDomainDef[] memory, Record[] memory) 
-    {
-
-        if(!(sort == SortOrder.ASCENDING_ORDER || sort == SortOrder.DESCENDING_ORDER)){
-            sort = SortOrder.DESCENDING_ORDER;
-        }
-
-        uint256 _dataSize;
-        uint256 _loopStart; 
-        uint256 _loopEnds;
-
-        if(sort == SortOrder.ASCENDING_ORDER){
-            if(endId >= _totalRegisteredDomains) endId = _totalRegisteredDomains;
-            require(endId >= startId, "BNS#getRegisteredDomains: END_ID_EXCEED_START_ID_FOR_SORT_ASC");
-            _dataSize = endId - startId;
-            _loopStart = startId;
-            _loopEnds = endId;
-        } else {
-            if(startId >= _totalRegisteredDomains) startId = _totalRegisteredDomains;
-            require(startId >= endId, "BNS#getRegisteredDomains: START_ID_MUST_EXCEED_END_ID_FOR_SORT_DESC");
-            _dataSize = startId - endId;
-            _loopStart = endId;
-            _loopEnds = startId;
-        }
-
-        // data size per query shouldnt be above 1000
-
-        RegisteredDomainDef[] memory _registeredDomainsArray = new RegisteredDomainDef[](_dataSize);
-        Record[] memory _domainRecordArray = new Record[](_dataSize);
-        
-        uint256 _currentId = _loopStart;
-        uint256 _counter;
-
-        while(_currentId == _loopEnds) {
-            
-            RegisteredDomainDef memory _rg = _registeredDomains[_currentId];
-            
-            if(_rg.assetAddress != address(0)) {
-                _registeredDomainsArray[_counter] = _rg;
-                _domainRecordArray[_counter] = IRegistry(_rg.assetAddress).getRecord(_rg.node);
-                _counter++;
-            }
-
-            (sort == SortOrder.ASCENDING_ORDER)  ? _currentId++ : _currentId--;
-        }
-
-        return (_registeredDomainsArray, _domainRecordArray);
-    } //end func 
-
     
     /**
      * @dev get domains by tld
@@ -550,7 +488,41 @@ contract BNS is
         view 
         returns(RegisteredDomainDef[] memory, Record[] memory)
     {
-        
+        uint dataLen = idsDataArray.length;
+
+        RegisteredDomainDef[] memory _domainRegInfoArray = new RegisteredDomainDef[](dataLen);
+        Record[] memory _domainRecordsArray = new Record[](dataLen);
+
+        for(uint256 i = 0; i < dataLen; i++) {
+            RegisteredDomainDef memory _rg = _registeredDomains[idsDataArray[i]];  
+            if(_rg.assetAddress != address(0)) {
+                _domainRegInfoArray[i] = _rg;
+                _domainRecordsArray[i] = IRegistry(_rg.assetAddress).getRecord(_rg.node);
+            }
+        }
+
+        return (_domainRegInfoArray, _domainRecordsArray);
+    }
+
+
+    /**
+     * @dev fetchDomainsByTLD fetch domains by tld 
+     * @param _tld tld node 
+     * @param startIndex the data index to start with
+     * @param endIndex  the end index to end with 
+     * @param sort how to sort the data 
+     */
+    function fetchDOmainsByTLD(
+        bytes32     _tld,
+        uint256     startIndex,
+        uint256     endIndex,
+        SortOrder   sort
+    ) 
+        public 
+        view 
+        returns(RegisteredDomainDef[] memory, Record[] memory)
+    {
+        return _fetchDomainsByIndexes(_registeredDomainsTLDIndexes[_tld], startIndex, endIndex, sort);
     }
 
 }
