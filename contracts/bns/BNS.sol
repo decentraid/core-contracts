@@ -234,7 +234,6 @@ contract BNS is
         payable
     {
    
-
         address _tldRegistry = getRegistry(_tld);
 
         require(_tldRegistry != address(0), "BNSCore#registerDomain: INVALID_TLD");
@@ -287,7 +286,7 @@ contract BNS is
         // add to tld collection
         _registeredDomainsTLDIndexes[getTLDNameHash(_tld)].push(_domainId);
 
-        
+        _registeredDomainsNodeIndexes[_node] = _domainId;
 
         emit RegisterDomain(
             _tld,
@@ -415,6 +414,143 @@ contract BNS is
     function percentToAmount(uint256 _percentInBps, uint256 _amount) internal pure returns(uint256) {
         //to get pbs,multiply percentage by 100
         return  (_amount.mul(_percentInBps)).div(10_000);
+    }
+
+
+    /**
+     * @dev get registered domains
+     * @param startId the id to start the data
+     * @param endId  the id to end fetching data
+     * @param sort there are two orders, 0 for ascending and 1 for descending
+     */
+    function getRegisteredDomains(
+        uint256 startId,
+        uint256 endId,
+        SortOrder sort
+    ) 
+        public 
+        view
+        returns (RegisteredDomainDef[] memory, Record[] memory) 
+    {
+
+        if(!(sort == SortOrder.ASCENDING_ORDER || sort == SortOrder.DESCENDING_ORDER)){
+            sort = SortOrder.DESCENDING_ORDER;
+        }
+
+        uint256 _dataSize;
+        uint256 _loopStart; 
+        uint256 _loopEnds;
+
+        if(sort == SortOrder.ASCENDING_ORDER){
+            if(endId >= _totalRegisteredDomains) endId = _totalRegisteredDomains;
+            require(endId >= startId, "BNS#getRegisteredDomains: END_ID_EXCEED_START_ID_FOR_SORT_ASC");
+            _dataSize = endId - startId;
+            _loopStart = startId;
+            _loopEnds = endId;
+        } else {
+            if(startId >= _totalRegisteredDomains) startId = _totalRegisteredDomains;
+            require(startId >= endId, "BNS#getRegisteredDomains: START_ID_MUST_EXCEED_END_ID_FOR_SORT_DESC");
+            _dataSize = startId - endId;
+            _loopStart = endId;
+            _loopEnds = startId;
+        }
+
+        // data size per query shouldnt be above 1000
+
+        RegisteredDomainDef[] memory _registeredDomainsArray = new RegisteredDomainDef[](_dataSize);
+        Record[] memory _domainRecordArray = new Record[](_dataSize);
+        
+        uint256 _currentId = _loopStart;
+        uint256 _counter;
+
+        while(_currentId == _loopEnds) {
+            
+            RegisteredDomainDef memory _rg = _registeredDomains[_currentId];
+            
+            if(_rg.assetAddress != address(0)) {
+                _registeredDomainsArray[_counter] = _rg;
+                _domainRecordArray[_counter] = IRegistry(_rg.assetAddress).getRecord(_rg.node);
+                _counter++;
+            }
+
+            (sort == SortOrder.ASCENDING_ORDER)  ? _currentId++ : _currentId--;
+        }
+
+        return (_registeredDomainsArray, _domainRecordArray);
+    } //end func 
+
+    
+    /**
+     * @dev get domains by tld
+     * @param indexesData indexes to fetch the ids
+     * @param startIndex the id to start the data
+     * @param endIndex  the id to end fetching data
+     * @param sort there are two orders, 0 for ascending and 1 for descending
+     */
+    function _fetchDomainsByIndexes(
+        uint256[] memory  indexesData,
+        uint256     startIndex,
+        uint256     endIndex,
+        SortOrder   sort
+    )
+        private  
+        view 
+        returns (RegisteredDomainDef[] memory, Record[] memory) 
+    {
+         if(!(sort == SortOrder.ASCENDING_ORDER || sort == SortOrder.DESCENDING_ORDER)){
+            sort = SortOrder.DESCENDING_ORDER;
+        }
+
+        uint256 _dataSize;
+        uint256 _loopStart; 
+        uint256 _loopEnds;
+
+        uint256 dataLength = indexesData.length;
+
+        if(dataLength == 0){
+            return ( (new RegisteredDomainDef[](0)), (new Record[](0)) );
+        }
+
+        if(sort == SortOrder.ASCENDING_ORDER){
+            if(endIndex >= dataLength) endIndex = dataLength;
+            require(endIndex >= startIndex, "BNS#getRegisteredDomains: END_INDEX_MUST_EXCEED_START_INDEX_FOR_SORT_ASC");
+            _dataSize = endIndex - startIndex;
+            _loopStart = startIndex;
+            _loopEnds = endIndex;
+        } else {
+            if(startIndex >= dataLength) startIndex = dataLength;
+            require(startIndex >= endIndex, "BNS#getRegisteredDomains: START_INDEX_MUST_EXCEED_END_INDEX_FOR_SORT_DESC");
+            _dataSize = startIndex - endIndex;
+            _loopStart = endIndex;
+            _loopEnds = startIndex;
+        }
+
+        uint256[] memory _dataIdsArray = new uint256[](_dataSize);
+
+        uint256 _currentId = _loopStart;
+        uint256 _counter;
+
+        while(_currentId == _loopEnds) {
+            _dataIdsArray[_counter] = indexesData[_currentId];
+        }
+
+
+        return fetchRegisteredDomainsByIds(_dataIdsArray);
+    } //end function
+
+
+    /**
+     * @dev fetchRegisteredDomainsByIds
+     * @param idsDataArray the ids data array
+     */
+    function fetchRegisteredDomainsByIds(
+        uint256[] memory idsDataArray
+    ) 
+        public 
+        view 
+        returns(RegisteredDomainDef[] memory, Record[] memory)
+    {
+        
     }
 
 }

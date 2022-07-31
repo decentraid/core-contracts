@@ -9,6 +9,11 @@ pragma solidity ^0.8.0;
 
 contract Defs {
 
+    enum SortOrder {
+        ASCENDING_ORDER,
+        DESCENDING_ORDER
+    }
+
     enum NodeType  {
         DOMAIN,
         SUBDOMAIN,

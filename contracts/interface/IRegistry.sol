@@ -16,5 +16,5 @@ abstract contract IRegistry is Defs {
     function getPrices() virtual public view returns (DomainPrices memory);
     function getPrice(string memory _label) virtual public view returns (uint256);
     function getRegistryInfo() virtual public view returns(RegistryInfo memory);
-    
+    function getRecord(bytes32 _node) virtual public view returns(Record memory);
 }

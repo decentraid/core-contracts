@@ -31,7 +31,7 @@ contract PriceFeed is Defs, ChainLink, Uniswap {
 
         uint256 _rate;
 
-        if(_pTokenInfo.priceFeedSource == stringToBytes32("chainlink")) {
+        if(_pTokenInfo.priceFeedSource == toBytes32("chainlink")) {
             _rate = getChainLinkPrice(_pTokenInfo.priceFeedContract);
         } else {
             _rate = uniswapFetchTokenPrice(_pTokenInfo.dexPairToken);
@@ -43,7 +43,7 @@ contract PriceFeed is Defs, ChainLink, Uniswap {
     } 
 
 
-    function stringToBytes32(string memory source) public pure returns (bytes32 result) {
+    function toBytes32(string memory source) public pure returns (bytes32 result) {
         bytes memory tempEmptyStringTest = bytes(source);
         if (tempEmptyStringTest.length == 0) {
             return 0x0;

@@ -134,8 +134,35 @@ contract BNSRegistry is
         require(ownerOf(tokenId) == _msgSender(), "BNSRegistry: NOT_OWNER");
         _;
     }
-
     
+    /**
+     * @dev getRecord get the record 
+     * @param _node the node to fetch the record
+     */
+    function getRecord(bytes32 _node)  
+        public 
+        view 
+        returns(Record memory)
+    {
+        
+        //first lets check if the node is a tld, if yes, we send it
+        require(_registryInfo.namehash != _node, "BNSRegistry#getRecord: REGISTRY_NODE_PROVIDED");
+
+        return _records[_node];
+    }
+
+    /**
+     * @dev getRecordByTokenId
+     */
+    function getRecord(uint256 _tokenId)  
+        public 
+        view 
+        tokenExists(_tokenId)
+        returns(Record memory)
+    {
+        return getRecord(_tokenIdToNodeMap[_tokenId]);
+    }
+
     /**
      * override isAuthorized
      */
