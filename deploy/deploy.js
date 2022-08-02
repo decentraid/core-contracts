@@ -41,6 +41,10 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
             
         });
 
+        console.log("deployedtRegistrarContract====>", deployedtRegistrarContract)
+
+        return true;
+
         Utils.successMsg(`Registrar Deloyed: ${deployedtRegistrarContract.address}`);
 
         deployedData["registrar"] = deployedtRegistrarContract.address;
@@ -49,9 +53,11 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
       
         Utils.infoMsg("Deploying TLDS BNSRegistry Contract")
 
+        //let bnsTLDParamArray = []
+
         for(let tldObj of tldsArray){
 
-            console.log("tldObj====>", tldObj)
+            //console.log("tldObj====>", tldObj)
 
             Utils.infoMsg(`Deploying ${tldObj.name} ERC721Registry Contract`)
 
@@ -80,10 +86,24 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
             Utils.successMsg(`TlD ${tldObj.name} Address: ${tldContractAddress}`);
 
             deployedTLDInfo[tldObj.tldName] = tldContractAddress;
+
         }
 
         deployedData["registries"] = deployedTLDInfo;
         ///////////////////////// EXPORT CONTRACT INFO /////////////////////
+        
+        ////////////// UPDATE BNS REGISTRAR AND ADD TLD DATA /////
+
+        let addToRegistrarParam = []
+
+        let ABI = ["function addTLD(string memory _name,address _addr)"]
+
+        const iface = new ethers.utils.Interface(ABI);
+
+        for(let tldObj of tldsArray){
+            
+        }
+        /////////// END //////
 
         console.log("deployedData===>", deployedData)
     } catch(e) {

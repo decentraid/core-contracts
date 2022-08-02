@@ -6,6 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "c": "npx hardhat compile",
+    "clean": "npx hardhat clean",
     "h_flatten": "npx hardhat flatten > hardhat_flattened.sol",
     "f": "truffle-flattener ./contracts/CanadaCoin.sol --output ./flattened.sol",
     "deploy_kovan": "npx hardhat deploy --network kovan --reset",

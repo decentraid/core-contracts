@@ -9,7 +9,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "../Defs.sol";
 import "../libs/@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
-
+import "../libs/@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 
 contract Uniswap is Defs {
 
@@ -37,6 +37,25 @@ contract Uniswap is Defs {
         uint numerator = amountInWithFee.mul(reserveOut);
         uint denominator = reserveIn.mul(1000).add(amountInWithFee);
         amountOut = numerator / denominator;
+    }
+
+
+    /**
+     * @dev get pair 
+     * @param _factory the dex factory
+     * @param _tokenA the first token 
+     * @param _tokenB the base tokens 
+     */
+    function getUniswapPairToken(
+        address _factory,
+        address _tokenA,
+        address _tokenB
+    ) 
+        public 
+        view 
+        returns(address)
+    {
+        return IUniswapV2Factory(_factory).getPair(_tokenA, _tokenB);
     }
 
 }

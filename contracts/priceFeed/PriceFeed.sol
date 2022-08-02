@@ -34,7 +34,7 @@ contract PriceFeed is Defs, ChainLink, Uniswap {
         if(_pTokenInfo.priceFeedSource == toBytes32("chainlink")) {
             _rate = getChainLinkPrice(_pTokenInfo.priceFeedContract);
         } else {
-            _rate = uniswapFetchTokenPrice(_pTokenInfo.dexPairToken);
+            _rate = uniswapFetchTokenPrice(_pTokenInfo.dexInfo.pricePairToken);
         }
 
         uint256 _price = _rate.mul(_amountUSDT);

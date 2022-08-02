@@ -1,108 +1,152 @@
 /** 
-* BNBChain Domains
+* Blockchain Domains
 * @website github.com/bnsprotocol
 * @author Team BNS <hello@bns.gg>
 * @license SPDX-License-Identifier: MIT
 */ 
 pragma solidity ^0.8.0;
 
-import "../utils/NameUtils.sol";
+import "./BnsBase.sol";
 //import "contracts/Defs.sol"; // in IRegistry
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interface/IRegistry.sol";
-import "../priceFeed/PriceFeed.sol";
+import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 
 contract BNS is 
-    Defs,
-    NameUtils,
     Initializable,
     ContextUpgradeable,
     OwnableUpgradeable,
-    PriceFeed
+    MulticallUpgradeable,
+    BnsBase 
 {
+
 
     event SetSigner(address indexed _oldSigner, address indexed  _newSigner);
     event AffiliateShare(address indexed _referrer, address indexed _paymentToken, uint256 _shareAmount);
     event RegisterDomain(string _tld, uint256 _tokenId, address indexed _to, address indexed _paymentToken, uint256 _amount);
     event SetPriceSlippageToleranceRate(uint256 _valueBPS);
     event AddTLD(string _name, address _addr, bytes32 _node);
-
+    event AddPaymentToken(uint256 _id, address _assetAddress);
+    event SetTreasuryAddress(address _account);
 
     using SafeMathUpgradeable for uint256;
     using ECDSAUpgradeable for bytes32;
 
-    ////////////// Rgistries ///////////////
-    // node => registry address 
-
-    mapping(bytes32  => address) private _registry;
-    bytes32[] private _registryIndexes;
-    
-    //// Payment Tokens //////
-
-    // total payment tokens 
-    uint256 _totalPaymentTokens;
-
-    mapping(uint256 => PaymentTokenDef) private _paymentTokens;
-    mapping(address => uint256) private _paymentTokensIndexes;
-    ////// End Payment Token ////
-
-    ///// Registered domains ////////
-    
-    uint256 _totalRegisteredDomains;
-
-    mapping(uint256 => RegisteredDomainDef) private _registeredDomains;
-    
-    mapping(bytes32 => uint256) private _registeredDomainsNodeIndexes;
-
-    // tld indexes
-    mapping(bytes32 => uint256[]) private _registeredDomainsTLDIndexes;
-
-    mapping(address => uint256[]) private _registeredDomainsAccountIndexes;
-
-    ///  End Registered Domains //// 
-
-
-    // request signer 
-    address _signer;
-
-    //check request authorization (default: true)
-    bool _checkRequestAuth;
-
-    // affiliate share 
-    uint256 _affiliateSharePercent;
-
-    // stable coin contract
-    address _defaultStableCoinAddr;
-
-    uint256 _priceSlippageToleranceRate;
-
     /**
      * @dev initialize the contract
      * @param requestSigner the address used for signing authorized request
-     * @param defaultStableCoinAddr stable stablecoin address
+     * @param defaultStableCoin_ stable stablecoin address
      */
     function initialize(
         address requestSigner,
-        address defaultStableCoinAddr
+        //address treasuryAddress_,
+        address defaultStableCoin_
     ) 
         public 
         initializer
     {   
+
+        require(defaultStableCoin_ != address(0), "BNS#initialize: defaultStableCoin_ cannot be a zero address");
+        //require(treasuryAddress_ != address(0), "BNS#initialize: treasuryAddress_ cannot be a zero address");
+
         __Context_init();
         __Ownable_init();
+        __Multicall_init();
+
+        if(requestSigner == address(0)){
+            requestSigner = _msgSender();
+        }
 
         _signer = requestSigner;
-        _checkRequestAuth       = true;
-        _affiliateSharePercent  = 500; // 5%  
-        _defaultStableCoinAddr  = defaultStableCoinAddr;
+        _checkRequestAuth       = false;
+        affiliateSharePercent   = 500; // 5%  
+        defaultStableCoin       = defaultStableCoin_;
+        //treasuryAddress         = treasuryAddress_;
 
         _priceSlippageToleranceRate = 50; // 0.5
     }
+
+    /**
+     * @dev update treasury address
+     * @param _account the treasury address
+     */
+    function setTreasuryAddress(address _account)
+        public
+        onlyOwner
+    {
+        treasuryAddress = _account;
+        emit SetTreasuryAddress(_account);
+    }
+    
+    /////////////////// Domains counts /////////////
+
+        /**
+         * @dev get total domains by tld
+         * @param _tld the tld name in lowercase string
+         * @return the id in uint256
+         */
+        function getTotalDomainByTLD(string memory _tld)
+            public 
+            view 
+            returns(uint256) 
+        {
+            return domainIdsByTLD[getTLDNameHash(_tld)].length;
+        }
+
+        /**
+         * @dev get total domains by tld
+         * @param _account the account we want
+         * @return the id in uint256
+         */
+        function getTotalDomainsByAccount(address _account)
+            public 
+            view 
+            returns(uint256) 
+        {
+            return domainIdsByAccount[_account].length;
+        }
+
+        /**
+         * @dev get domain info by index
+         */
+        function getDomainByTLDIndex(uint256 _idIndex)
+            public 
+            view 
+            returns(DomainInfoDef memory) 
+        {
+            return getDomainInfoById(domainIdsByTLD[_idIndex]);
+        }
+
+        /**
+         * @dev get domain info by index
+         */
+        function getDomainByAccountIndex(uint256 _idIndex)
+            public 
+            view 
+            returns(DomainInfoDef memory) 
+        {
+            return getDomainInfoById(domainIdsByAccount[_idIndex]);
+        }
+
+    /////////////////// END Domain info count /////////
+
+
+    //////////////// DEFAULT STABLE COIN /////////
+    /**
+     * @dev update default stablecoin address
+     * @param _assetAddress the stablecoin contract address
+     */
+    function setDefaultStableCoin(address _assetAddress)
+        public
+        onlyOwner
+    {
+        defaultStableCoin = _assetAddress;
+    }
+
+    ///////////// END DEFAULT STATBLE COIN /////////////
 
     /**
      * @dev addTLD adds a deployed tld info
@@ -120,14 +164,21 @@ contract BNS is
 
         bytes32 _node = getTLDNameHash(_name);
 
-        require(_registry[_node] != address(0), "BNS#addTLD: TLD_ALREADY_EXISTS");
+        require(registryInfo[_node] != address(0), "BNS#addTLD: TLD_ALREADY_EXISTS");
 
-        _registry[_node] = _addr;
+        registryInfo[_node] = _addr;
 
-        _registryIndexes.push(_node);
+        registryIds.push(_node);
 
         emit AddTLD(_name, _addr, _node);
     } //end
+
+    /**
+     * @dev getTotalTLDs - get total tlds 
+     */
+    function getTotalTLDs() public view returns(uint256){
+        return registryIds.length;
+    }
 
 
     /**
@@ -141,7 +192,7 @@ contract BNS is
         returns (RegistryInfo memory _regInfo)
     {   
         bytes32 _node = getTLDNameHash(_tld);
-        address registryAddr = _registry[_node];
+        address registryAddr = registryInfo[_node];
 
         if(registryAddr == address(0)){
             return _regInfo;
@@ -161,10 +212,10 @@ contract BNS is
         returns (RegistryInfo[] memory)
     {   
 
-        RegistryInfo[] memory _regDataArray = new RegistryInfo[](_registryIndexes.length + 1);
+        RegistryInfo[] memory _regDataArray = new RegistryInfo[](registryIds.length);
 
-        for(uint256 i=0; i<= _registryIndexes.length; i++) {
-            _regDataArray[i] = IRegistry(_registry[_registryIndexes[i]]).getRegistryInfo();
+        for(uint256 i=0; i < registryIds.length; i++) {
+            _regDataArray[i] = IRegistry(registryInfo[registryIds[i]]).getRegistryInfo();
         }
 
         return _regDataArray;
@@ -192,7 +243,7 @@ contract BNS is
         view 
         returns (address)
     {
-        return _registry[getTLDNameHash(_tld)];
+        return registryInfo[getTLDNameHash(_tld)];
     }
 
     /**
@@ -205,7 +256,7 @@ contract BNS is
         view 
         returns (address)
     {
-        return _registry[_tld];
+        return registryInfo[_tld];
     }
 
     /**
@@ -227,12 +278,15 @@ contract BNS is
         string memory _label,
         string memory _tld,
         address paymentToken,
-        address affiliateAddr
+        address affiliateAddr,
+        RequestAuthInfo memory authInfo 
     )
         public
         onlyValidLabel(_tld)
         payable
-    {
+    {   
+
+        validateRequestAuth(authInfo);
    
         address _tldRegistry = getRegistry(_tld);
 
@@ -242,7 +296,7 @@ contract BNS is
 
         uint256 amountUSDT = _iregistry.getPrice(_label);
 
-        PaymentTokenDef memory _pTokenInfo = _paymentTokens[_paymentTokensIndexes[paymentToken]];
+        PaymentTokenDef memory _pTokenInfo = paymentTokens[paymentTokensIndexes[paymentToken]];
 
         uint256 tokenAmount = PriceFeed.toTokenAmount(amountUSDT, _pTokenInfo);
 
@@ -268,12 +322,17 @@ contract BNS is
         //send affiliate payment
         processAffiliateShare(affiliateAddr, paymentToken, tokenAmount);
         
+        // lets send the rest to treasury 
+        /*if(treasuryAddress != address(0)){
+            transferToken(_paymentToken, payable(address(this)), payable(_referrer), _shareAmount);
+        }*/
 
         (uint256 _tokenId, bytes32 _node) = _iregistry.addDomain(_msgSender(), _tld);
 
-        uint256 _domainId = _totalRegisteredDomains++;
+        // increment and assign +1
+        uint256 _domainId = ++totalDomains;
 
-        _registeredDomains[_domainId] = RegisteredDomainDef({
+        domainsInfo[_domainId] = DomainInfoDef({
             assetAddress:   _tldRegistry,
             tokenId:        _tokenId,
             node:           _node,
@@ -281,12 +340,12 @@ contract BNS is
         });
 
         // add to user's domains collection
-        _registeredDomainsAccountIndexes[_msgSender()].push(_domainId);
+        domainIdsByAccount[_msgSender()].push(_domainId);
 
         // add to tld collection
-        _registeredDomainsTLDIndexes[getTLDNameHash(_tld)].push(_domainId);
+        domainIdsByTLD[getTLDNameHash(_tld)].push(_domainId);
 
-        _registeredDomainsNodeIndexes[_node] = _domainId;
+        domainIdByNode[_node] = _domainId;
 
         emit RegisterDomain(
             _tld,
@@ -343,7 +402,7 @@ contract BNS is
     {
         if(_referrer == address(0) || _amount == 0) return;
 
-        uint256 _shareAmount = percentToAmount(_affiliateSharePercent, _amount);
+        uint256 _shareAmount = percentToAmount(affiliateSharePercent, _amount);
 
         transferToken(_paymentToken, payable(address(this)), payable(_referrer), _shareAmount);
 
@@ -354,7 +413,7 @@ contract BNS is
      * @dev Set signature signer.
      * @param signer_ the new signer
      */
-    function setSigner(address signer_) external onlyOwner {
+    function setSigner(address signer_) public onlyOwner {
 
         require(signer_ != address(0), "BNSCore#setSigner: INVALID_ADDRESS");
 
@@ -369,7 +428,7 @@ contract BNS is
      * @dev wether to enable or disable request authorization checks
      * @param _option true to enable, false to disable
      */
-    function enableRequestAuthCheck(bool _option)  external onlyOwner {
+    function enableRequestAuthCheck(bool _option)  public onlyOwner {
         _checkRequestAuth = _option;
     }
 
@@ -387,21 +446,86 @@ contract BNS is
     /**
      * @dev validate the request
      * @param _authInfo the authorization auth info
-     * @param _requestHash the hash of the request params
      */
-    function validateRequestAuth(RequestAuthInfo memory _authInfo, bytes32 _requestHash) internal view {
+    function validateRequestAuth(RequestAuthInfo memory _authInfo) internal view {
         if(_checkRequestAuth) {
             require(_authInfo.expiry > block.timestamp, "BNSCore: SIGNER_AUTH_EXPIRED");
             bytes32 msgHash = keccak256( abi.encodePacked(
                                             _authInfo.authKey,
                                             _msgSender(), 
                                             _authInfo.expiry, 
-                                            _requestHash, 
                                             getChainId()
                                         ) 
                                 );
             require(_signer == msgHash.recover(_authInfo.signature), "BNSCore: INVALID_SIGNATURE");
         }
+    }
+
+
+    /**
+     * @dev get domain by id
+     * @param _id the domain Id 
+     */
+    function getDomainInfoById(uint256 _id)
+        public 
+        view 
+        returns (DomainInfoDef memory, Record memory) 
+    {
+        DomainInfoDef memory _rg = domainsInfo[_id];
+        Record memory _domainRecord;
+
+        if(_rg.assetAddress == address(0)) {
+            return ( _rg, _domainRecord );
+        }
+
+        _domainRecord = IRegistry(_rg.assetAddress).getRecord(_rg.node);
+
+        return (_rg, _domainRecord);
+    }
+    
+
+    /**
+     * @dev get domain info by node
+     * @param _node the domain node
+     */
+    function getDomainInfoByNode(bytes32 _node)
+        public 
+        view 
+        returns (DomainInfoDef memory, Record memory) 
+    {
+        return getDomainInfoById(domainIdByNode[_node]);
+    }
+
+
+    /**
+     * @dev addPaymentToken - add a payment token
+     * @param _pTokenInfo - PaymentTokenDef
+     */
+    function addPaymentToken(PaymentTokenDef memory _pTokenInfo )
+        public 
+        onlyOwner
+    {
+        if(_pTokenInfo.priceFeedSource == "chainlink"){
+            require(_pTokenInfo.priceFeedContract == address(0), "BNS#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED");
+        }
+        
+        require(
+            !(_pTokenInfo.dexInfo.factory == address(0) || _pTokenInfo.dexInfo.router == address(0)), 
+            "BNS#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED"
+        );
+
+        _pTokenInfo.dexInfo.pricePairToken =  getUniswapPairToken(
+            _pTokenInfo.dexInfo.factory,
+            _pTokenInfo.tokenAddress,
+            defaultStableCoin
+        );
+
+       uint256 _pTokenId = ++totalPaymentTokens;
+
+        paymentTokens[_pTokenId] = _pTokenInfo;
+        paymentTokensIndexes[_pTokenInfo.tokenAddress] = _pTokenId;
+
+        emit AddPaymentToken(_pTokenId, _pTokenInfo.tokenAddress);
     }
 
 
@@ -416,113 +540,39 @@ contract BNS is
         return  (_amount.mul(_percentInBps)).div(10_000);
     }
 
-
-    
     /**
-     * @dev get domains by tld
-     * @param indexesData indexes to fetch the ids
-     * @param startIndex the id to start the data
-     * @param endIndex  the id to end fetching data
-     * @param sort there are two orders, 0 for ascending and 1 for descending
+     * @dev withdraw token - if users mistakenly send token to contract
+     * @param _assetAddress the asset contract address
+     * @param _to the destination address
      */
-    function _fetchDomainsByIndexes(
-        uint256[] memory  indexesData,
-        uint256     startIndex,
-        uint256     endIndex,
-        SortOrder   sort
+    function withdrawToken(
+        address _assetAddress,
+        address _to
     )
-        private  
-        view 
-        returns (RegisteredDomainDef[] memory, Record[] memory) 
-    {
-         if(!(sort == SortOrder.ASCENDING_ORDER || sort == SortOrder.DESCENDING_ORDER)){
-            sort = SortOrder.DESCENDING_ORDER;
-        }
-
-        uint256 _dataSize;
-        uint256 _loopStart; 
-        uint256 _loopEnds;
-
-        uint256 dataLength = indexesData.length;
-
-        if(dataLength == 0){
-            return ( (new RegisteredDomainDef[](0)), (new Record[](0)) );
-        }
-
-        if(sort == SortOrder.ASCENDING_ORDER){
-            if(endIndex >= dataLength) endIndex = dataLength;
-            require(endIndex >= startIndex, "BNS#getRegisteredDomains: END_INDEX_MUST_EXCEED_START_INDEX_FOR_SORT_ASC");
-            _dataSize = endIndex - startIndex;
-            _loopStart = startIndex;
-            _loopEnds = endIndex;
-        } else {
-            if(startIndex >= dataLength) startIndex = dataLength;
-            require(startIndex >= endIndex, "BNS#getRegisteredDomains: START_INDEX_MUST_EXCEED_END_INDEX_FOR_SORT_DESC");
-            _dataSize = startIndex - endIndex;
-            _loopStart = endIndex;
-            _loopEnds = startIndex;
-        }
-
-        uint256[] memory _dataIdsArray = new uint256[](_dataSize);
-
-        uint256 _currentId = _loopStart;
-        uint256 _counter;
-
-        while(_currentId == _loopEnds) {
-            _dataIdsArray[_counter] = indexesData[_currentId];
-        }
-
-
-        return fetchRegisteredDomainsByIds(_dataIdsArray);
-    } //end function
-
-
-    /**
-     * @dev fetchRegisteredDomainsByIds
-     * @param idsDataArray the ids data array
-     */
-    function fetchRegisteredDomainsByIds(
-        uint256[] memory idsDataArray
-    ) 
         public 
-        view 
-        returns(RegisteredDomainDef[] memory, Record[] memory)
+        onlyOwner 
     {
-        uint dataLen = idsDataArray.length;
-
-        RegisteredDomainDef[] memory _domainRegInfoArray = new RegisteredDomainDef[](dataLen);
-        Record[] memory _domainRecordsArray = new Record[](dataLen);
-
-        for(uint256 i = 0; i < dataLen; i++) {
-            RegisteredDomainDef memory _rg = _registeredDomains[idsDataArray[i]];  
-            if(_rg.assetAddress != address(0)) {
-                _domainRegInfoArray[i] = _rg;
-                _domainRecordsArray[i] = IRegistry(_rg.assetAddress).getRecord(_rg.node);
-            }
-        }
-
-        return (_domainRegInfoArray, _domainRecordsArray);
+        IERC20 _erc20 = IERC20(_assetAddress);
+        require(_erc20.balanceOf(address(this)) > 0, "BNS#withdrawToken: ZERO_BALANCE");
+        _erc20.transfer(_to, _erc20.balanceOf(address(this)));
     }
 
-
-    /**
-     * @dev fetchDomainsByTLD fetch domains by tld 
-     * @param _tld tld node 
-     * @param startIndex the data index to start with
-     * @param endIndex  the end index to end with 
-     * @param sort how to sort the data 
+     /**
+     * @dev withdraw ethers - if users mistakenly send ethers or native asset to contract
+     * @param _to the destination address
      */
-    function fetchDOmainsByTLD(
-        bytes32     _tld,
-        uint256     startIndex,
-        uint256     endIndex,
-        SortOrder   sort
-    ) 
+    function withdrawEthers(
+        address payable _to
+    )
         public 
-        view 
-        returns(RegisteredDomainDef[] memory, Record[] memory)
+        onlyOwner 
     {
-        return _fetchDomainsByIndexes(_registeredDomainsTLDIndexes[_tld], startIndex, endIndex, sort);
+
+        uint256 _bal = address(this).balance;
+        require(_bal > 0, "BNS#withdrawEthers: ZERO_BALANCE");
+
+        (bool success, ) = _to.call{ value: _bal }("");
+        require(success, "TransferBase#transfer: NATIVE_TRANSFER_FAILED");
     }
 
 }

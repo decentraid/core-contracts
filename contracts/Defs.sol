@@ -20,11 +20,17 @@ contract Defs {
         REGISTRY
     }
 
+    struct DexInfo {
+        address factory;
+        address router;
+        address pricePairToken;
+    }
+
     struct PaymentTokenDef {
         address tokenAddress;
         bytes32 priceFeedSource; // chainlink or pancakeswap
         address priceFeedContract;
-        address dexPairToken;
+        DexInfo dexInfo;
         bool    enabled;
         uint256 addedOn;
         uint256 updatedOn; 
@@ -71,7 +77,7 @@ contract Defs {
         uint256     expiry; // expiry
     }
 
-    struct RegisteredDomainDef {
+    struct DomainInfoDef {
         address   assetAddress;
         uint256   tokenId;
         bytes32   node;
