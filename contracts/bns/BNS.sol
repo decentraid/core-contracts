@@ -14,12 +14,14 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
 contract BNS is 
     Initializable,
     ContextUpgradeable,
     OwnableUpgradeable,
     MulticallUpgradeable,
+    ReentrancyGuardUpgradeable,
     BnsBase 
 {
 
@@ -53,6 +55,7 @@ contract BNS is
         __Context_init_unchained();
         __Ownable_init_unchained();
         __Multicall_init_unchained();
+        __ReentrancyGuard_init();
 
         if(requestSigner == address(0)){
             requestSigner = _msgSender();
@@ -347,6 +350,7 @@ contract BNS is
     )
         public
         onlyValidLabel(_tld)
+         nonReentrant()
         payable
     {   
 
