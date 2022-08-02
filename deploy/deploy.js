@@ -5,6 +5,8 @@ const secretsConfig = require("../.secrets.js")
 const fsp = require("fs/promises")
 const tldsArray = require("../tlds/tlds")
 
+const zeroAddress = "0x0000000000000000000000000000000000000000";
+
 module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
     try{
@@ -34,16 +36,18 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                 execute: {
                   methodName: "initialize",
                   args: [
-                      
+                        owner, // signer
+                        owner, // treasury address
+                        owner, // default stable coin
                     ]
                 }
             }
             
         });
 
-        console.log("deployedtRegistrarContract====>", deployedtRegistrarContract)
+        //console.log("deployedtRegistrarContract====>", deployedtRegistrarContract)
 
-        return true;
+        return;
 
         Utils.successMsg(`Registrar Deloyed: ${deployedtRegistrarContract.address}`);
 

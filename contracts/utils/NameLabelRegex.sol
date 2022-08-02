@@ -136,7 +136,12 @@ library NameLabelRegex {
     return State(false, s0);
   }
 
-  function matches(string memory input) public pure returns (bool) {
+  function matches(string memory input) 
+    internal 
+    pure 
+    returns (bool) 
+  {
+    
     State memory cur = State(false, s1);
 
     for (uint i = 0; i < bytes(input).length; i++) {

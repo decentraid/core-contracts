@@ -10,11 +10,13 @@ import "./NameLabelRegex.sol";
 
 contract NameUtils  {
 
+    using NameLabelRegex for string;
+
     /**
     * only valid punnyCode label format
     */    
     modifier onlyValidLabel(string memory nameLabel) {
-        require( NameLabelRegex.matches(nameLabel), "BNS#NameUtils: INVALID_LABEL_PUNNYCODE_FORMAT");
+        require( isValidNameLabel(nameLabel), "BNS#NameUtils: INVALID_LABEL_PUNNYCODE_FORMAT");
         _;
     }
 
@@ -27,7 +29,7 @@ contract NameUtils  {
         internal 
         returns(bool) 
     {
-        return NameLabelRegex.matches(nameLabel);
+        return nameLabel.matches();
     }
 
     /**
@@ -57,7 +59,7 @@ contract NameUtils  {
         _namehash = keccak256(abi.encodePacked(_namehash, keccak256(abi.encodePacked(_tld))));
     }
 
-    function bytes32ToLiteralString(bytes32 data) 
+    /*function bytes32ToLiteralString(bytes32 data) 
         public
         pure
         returns (string memory result) 
@@ -84,5 +86,6 @@ contract NameUtils  {
         }
         
         result = string(temp);
-    }
+    }*/
+    
 }

@@ -26,7 +26,7 @@ contract BNS is
 
     event SetSigner(address indexed _oldSigner, address indexed  _newSigner);
     event AffiliateShare(address indexed _referrer, address indexed _paymentToken, uint256 _shareAmount);
-    event RegisterDomain(string _tld, uint256 _tokenId, address indexed _to, address indexed _paymentToken, uint256 _amount);
+    event RegisterDomain(uint256 _domainId, address indexed _to, address indexed _paymentToken, uint256 _amount);
     event SetPriceSlippageToleranceRate(uint256 _valueBPS);
     event AddTLD(string _name, address _addr, bytes32 _node);
     event AddPaymentToken(uint256 _id, address _assetAddress);
@@ -37,12 +37,10 @@ contract BNS is
 
     /**
      * @dev initialize the contract
-     * @param requestSigner the address used for signing authorized request
-     * @param defaultStableCoin_ stable stablecoin address
      */
     function initialize(
         address requestSigner,
-        //address treasuryAddress_,
+        address treasuryAddress_,
         address defaultStableCoin_
     ) 
         public 
@@ -50,11 +48,11 @@ contract BNS is
     {   
 
         require(defaultStableCoin_ != address(0), "BNS#initialize: defaultStableCoin_ cannot be a zero address");
-        //require(treasuryAddress_ != address(0), "BNS#initialize: treasuryAddress_ cannot be a zero address");
+        require(treasuryAddress_ != address(0), "BNS#initialize: treasuryAddress_ cannot be a zero address");
 
-        __Context_init();
-        __Ownable_init();
-        __Multicall_init();
+        __Context_init_unchained();
+        __Ownable_init_unchained();
+        __Multicall_init_unchained();
 
         if(requestSigner == address(0)){
             requestSigner = _msgSender();
@@ -64,12 +62,12 @@ contract BNS is
         _checkRequestAuth       = false;
         affiliateSharePercent   = 500; // 5%  
         defaultStableCoin       = defaultStableCoin_;
-        //treasuryAddress         = treasuryAddress_;
+        treasuryAddress         = treasuryAddress_;
 
         _priceSlippageToleranceRate = 50; // 0.5
     }
 
-    /**
+     /**
      * @dev update treasury address
      * @param _account the treasury address
      */
@@ -80,8 +78,43 @@ contract BNS is
         treasuryAddress = _account;
         emit SetTreasuryAddress(_account);
     }
-    
-    /////////////////// Domains counts /////////////
+
+    /**
+     * @dev update default stablecoin address
+     * @param _assetAddress the stablecoin contract address
+     */
+    function setDefaultStableCoin(address _assetAddress)
+        public
+        onlyOwner
+    {
+        defaultStableCoin = _assetAddress;
+    }
+
+    /**
+     * @dev set Price deviation rate tolerance, the rate in % at which the price can fall to
+     * @param valueBPS value in basis point 
+     */
+    function setPriceSlippageToleranceRate(uint256 valueBPS) 
+        public 
+        onlyOwner
+    {
+        _priceSlippageToleranceRate = valueBPS;
+        emit SetPriceSlippageToleranceRate(valueBPS);
+    }
+
+    /**
+     * @dev get chain id 
+     */
+    function getChainId() public view returns (uint256) {
+        uint256 id;
+        assembly {
+            id := chainid()
+        }
+        return id;
+    }
+
+
+    ////////////////// Domains counts /////////////
 
         /**
          * @dev get total domains by tld
@@ -112,43 +145,82 @@ contract BNS is
         /**
          * @dev get domain info by index
          */
-        function getDomainByTLDIndex(uint256 _idIndex)
+        function getDomainByTLDIndex(
+            string memory _tld,
+            uint256 _idIndex
+        )
             public 
             view 
-            returns(DomainInfoDef memory) 
+            returns (DomainInfoDef memory, Record memory) 
         {
-            return getDomainInfoById(domainIdsByTLD[_idIndex]);
+            return getDomainInfoById(domainIdsByTLD[getTLDNameHash(_tld)][_idIndex]);
         }
 
         /**
          * @dev get domain info by index
          */
-        function getDomainByAccountIndex(uint256 _idIndex)
+        function getDomainByAccountIndex(
+            address _account,
+            uint256 _idIndex
+        )
             public 
             view 
-            returns(DomainInfoDef memory) 
+            returns (DomainInfoDef memory, Record memory) 
         {
-            return getDomainInfoById(domainIdsByAccount[_idIndex]);
+            return getDomainInfoById(domainIdsByAccount[_account][_idIndex]);
         }
 
     /////////////////// END Domain info count /////////
 
+    ////////////////// Request Auth ////////////////
 
-    //////////////// DEFAULT STABLE COIN /////////
     /**
-     * @dev update default stablecoin address
-     * @param _assetAddress the stablecoin contract address
+     * @dev wether to enable or disable request authorization checks
+     * @param _option true to enable, false to disable
      */
-    function setDefaultStableCoin(address _assetAddress)
-        public
-        onlyOwner
-    {
-        defaultStableCoin = _assetAddress;
+    function enableRequestAuthCheck(bool _option)  public onlyOwner {
+        _checkRequestAuth = _option;
     }
 
-    ///////////// END DEFAULT STATBLE COIN /////////////
+      /**
+     * @dev validate the request
+     * @param _authInfo the authorization auth info
+     */
+    function validateRequestAuth(RequestAuthInfo memory _authInfo) internal view {
+        if(_checkRequestAuth) {
+            require(_authInfo.expiry > block.timestamp, "BNSCore: SIGNER_AUTH_EXPIRED");
+            bytes32 msgHash = keccak256( abi.encodePacked(
+                                            _authInfo.authKey,
+                                            _msgSender(), 
+                                            _authInfo.expiry, 
+                                            getChainId()
+                                        ) 
+                                );
+            require(_signer == msgHash.recover(_authInfo.signature), "BNSCore: INVALID_SIGNATURE");
+        }
+    }
+
 
     /**
+     * @dev Set signature signer.
+     * @param signer_ the new signer
+     */
+    function setSigner(address signer_) public onlyOwner {
+
+        require(signer_ != address(0), "BNSCore#setSigner: INVALID_ADDRESS");
+
+        address _oldSigner = _signer;
+
+        _signer = signer_;
+
+        emit SetSigner(_oldSigner, _signer);
+    }
+
+    /////////// Request Auth Ends ////////////
+
+    /////// TLD functions Starts //////
+
+     /**
      * @dev addTLD adds a deployed tld info
      * @param _name the tld name 
      * @param _addr the tld contract address
@@ -220,20 +292,11 @@ contract BNS is
 
         return _regDataArray;
     }
+    /////////// END TLD Functions ///////////
 
-    /**
-     * @dev set Price deviation rate tolerance, the rate in % at which the price can fall to
-     * @param valueBPS value in basis point 
-     */
-    function setPriceSlippageToleranceRate(uint256 valueBPS) 
-        public 
-        onlyOwner
-    {
-        _priceSlippageToleranceRate = valueBPS;
-        emit SetPriceSlippageToleranceRate(valueBPS);
-    }
-    
-    /**
+    /////////////// Registry Start /////////////
+
+     /**
      * @dev get a registry address
      * @param _tld the top level domain name in string example: cake
      * @return address 
@@ -266,6 +329,7 @@ contract BNS is
     function resolver(bytes32 node) public view returns (address) {
         return getRegistry(node);
     }
+    ///////////// Registry Ends ///////////////
 
     /**
      * @dev register a domain
@@ -320,12 +384,17 @@ contract BNS is
         }
 
         //send affiliate payment
-        processAffiliateShare(affiliateAddr, paymentToken, tokenAmount);
+        uint256 affiliateShareAmt = processAffiliateShare(affiliateAddr, paymentToken, tokenAmount);
         
         // lets send the rest to treasury 
-        /*if(treasuryAddress != address(0)){
-            transferToken(_paymentToken, payable(address(this)), payable(_referrer), _shareAmount);
-        }*/
+        if(treasuryAddress != address(0)){
+            transferToken(
+                paymentToken, 
+                payable(address(this)), 
+                payable(treasuryAddress), 
+                (tokenAmount.sub(affiliateShareAmt)) 
+            );
+        }
 
         (uint256 _tokenId, bytes32 _node) = _iregistry.addDomain(_msgSender(), _tld);
 
@@ -342,14 +411,15 @@ contract BNS is
         // add to user's domains collection
         domainIdsByAccount[_msgSender()].push(_domainId);
 
+        bytes32 tldHash = getTLDNameHash(_tld);
+
         // add to tld collection
-        domainIdsByTLD[getTLDNameHash(_tld)].push(_domainId);
+        domainIdsByTLD[tldHash].push(_domainId);
 
         domainIdByNode[_node] = _domainId;
 
         emit RegisterDomain(
-            _tld,
-            _tokenId,  
+            _domainId,  
             _msgSender(), 
             paymentToken, 
             tokenAmount
@@ -358,7 +428,11 @@ contract BNS is
     } //end 
 
     /**
-     * doTransfer
+     * @dev handle transfer
+     * @param tokenAddress the token asset contract
+     * @param _from the originating address
+     * @param _to the destination address
+     * @param amount the amount to send
      */
     function transferToken(
         address tokenAddress, 
@@ -398,69 +472,19 @@ contract BNS is
         address _paymentToken,
         uint256 _amount
     )
-        private 
+        private
+        returns(uint256) 
     {
-        if(_referrer == address(0) || _amount == 0) return;
+        if(_referrer == address(0) || _amount == 0) return 0;
 
         uint256 _shareAmount = percentToAmount(affiliateSharePercent, _amount);
 
         transferToken(_paymentToken, payable(address(this)), payable(_referrer), _shareAmount);
 
         emit AffiliateShare( _referrer, _paymentToken, _shareAmount);
+
+        return _shareAmount;
     }
-
-    /**
-     * @dev Set signature signer.
-     * @param signer_ the new signer
-     */
-    function setSigner(address signer_) public onlyOwner {
-
-        require(signer_ != address(0), "BNSCore#setSigner: INVALID_ADDRESS");
-
-        address _oldSigner = _signer;
-
-        _signer = signer_;
-
-        emit SetSigner(_oldSigner, _signer);
-    }
-
-    /**
-     * @dev wether to enable or disable request authorization checks
-     * @param _option true to enable, false to disable
-     */
-    function enableRequestAuthCheck(bool _option)  public onlyOwner {
-        _checkRequestAuth = _option;
-    }
-
-      /**
-     * @dev get chain id 
-     */
-    function getChainId() public view returns (uint256) {
-        uint256 id;
-        assembly {
-            id := chainid()
-        }
-        return id;
-    }
-
-    /**
-     * @dev validate the request
-     * @param _authInfo the authorization auth info
-     */
-    function validateRequestAuth(RequestAuthInfo memory _authInfo) internal view {
-        if(_checkRequestAuth) {
-            require(_authInfo.expiry > block.timestamp, "BNSCore: SIGNER_AUTH_EXPIRED");
-            bytes32 msgHash = keccak256( abi.encodePacked(
-                                            _authInfo.authKey,
-                                            _msgSender(), 
-                                            _authInfo.expiry, 
-                                            getChainId()
-                                        ) 
-                                );
-            require(_signer == msgHash.recover(_authInfo.signature), "BNSCore: INVALID_SIGNATURE");
-        }
-    }
-
 
     /**
      * @dev get domain by id
@@ -574,5 +598,4 @@ contract BNS is
         (bool success, ) = _to.call{ value: _bal }("");
         require(success, "TransferBase#transfer: NATIVE_TRANSFER_FAILED");
     }
-
-}
+}   
