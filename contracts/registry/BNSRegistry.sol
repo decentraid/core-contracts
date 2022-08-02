@@ -361,7 +361,7 @@ contract BNSRegistry is
     }
 
     /**
-     * @dev register a subDomain
+     * @dev register a subDomain 
      * @param _label the name of the domain
      * @param _parentNode the parent node to create the subdomain from
      */

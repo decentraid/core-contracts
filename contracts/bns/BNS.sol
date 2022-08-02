@@ -116,59 +116,59 @@ contract BNS is
 
     ////////////////// Domains counts /////////////
 
-        /**
-         * @dev get total domains by tld
-         * @param _tld the tld name in lowercase string
-         * @return the id in uint256
-         */
-        function getTotalDomainByTLD(string memory _tld)
-            public 
-            view 
-            returns(uint256) 
-        {
-            return domainIdsByTLD[getTLDNameHash(_tld)].length;
-        }
+    /**
+    * @dev get total domains by tld
+    * @param _tld the tld name in lowercase string
+    * @return the id in uint256
+    */
+    function getTotalDomainByTLD(string memory _tld)
+        public 
+        view 
+        returns(uint256) 
+    {
+        return domainIdsByTLD[getTLDNameHash(_tld)].length;
+    }
 
-        /**
-         * @dev get total domains by tld
-         * @param _account the account we want
-         * @return the id in uint256
-         */
-        function getTotalDomainsByAccount(address _account)
-            public 
-            view 
-            returns(uint256) 
-        {
-            return domainIdsByAccount[_account].length;
-        }
+    /**
+    * @dev get total domains by tld
+    * @param _account the account we want
+    * @return the id in uint256
+    */
+    function getTotalDomainsByAccount(address _account)
+        public 
+        view 
+        returns(uint256) 
+    {
+        return domainIdsByAccount[_account].length;
+    }
 
-        /**
-         * @dev get domain info by index
-         */
-        function getDomainByTLDIndex(
-            string memory _tld,
-            uint256 _idIndex
-        )
-            public 
-            view 
-            returns (DomainInfoDef memory, Record memory) 
-        {
-            return getDomainInfoById(domainIdsByTLD[getTLDNameHash(_tld)][_idIndex]);
-        }
+    /**
+    * @dev get domain info by index
+    */
+    function getDomainByTLDIndex(
+        string memory _tld,
+        uint256 _idIndex
+    )
+        public 
+        view 
+        returns (DomainInfoDef memory, Record memory) 
+    {
+        return getDomainInfoById(domainIdsByTLD[getTLDNameHash(_tld)][_idIndex]);
+    }
 
-        /**
-         * @dev get domain info by index
-         */
-        function getDomainByAccountIndex(
-            address _account,
-            uint256 _idIndex
-        )
-            public 
-            view 
-            returns (DomainInfoDef memory, Record memory) 
-        {
-            return getDomainInfoById(domainIdsByAccount[_account][_idIndex]);
-        }
+    /**
+    * @dev get domain info by index
+    */
+    function getDomainByAccountIndex(
+        address _account,
+        uint256 _idIndex
+    )
+        public 
+        view 
+        returns (DomainInfoDef memory, Record memory) 
+    {
+        return getDomainInfoById(domainIdsByAccount[_account][_idIndex]);
+    }
 
     /////////////////// END Domain info count /////////
 
