@@ -3,7 +3,7 @@
 ==================================================
 
 ### What is Blockchain Domains
-Blockchain Domains is a social NFT domain protocol where projects & companies can create their own top level domains (TLD) for their users or fans for various use cases such as governance, identity & many more.
+Blockchain Domains is a social NFT domain protocol for brands & projects. Projects with large community can create their own top level domains (TLD) for their users or fans for various use cases such as governance, identity & many more.
 
 ### INSTALLATION
 ```sh
