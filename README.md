@@ -21,6 +21,10 @@ yarn install
 npm inatall
 ```
 
+### Copy or Rename secret config file from .secret.example.js --> .secret.js
+```js 
+  cp ./.secret.example.js .secret.js
+ ```
 
-
+Now open the .secret.js and update the details in there 
 
