@@ -50,7 +50,7 @@ contract BNS is
     {   
 
         require(defaultStableCoin_ != address(0), "BNS#initialize: defaultStableCoin_ cannot be a zero address");
-        require(treasuryAddress_ != address(0), "BNS#initialize: treasuryAddress_ cannot be a zero address");
+        //require(treasuryAddress_ != address(0), "BNS#initialize: treasuryAddress_ cannot be a zero address");
 
         __Context_init_unchained();
         __Ownable_init_unchained();
@@ -115,6 +115,58 @@ contract BNS is
         }
         return id;
     }
+
+
+    /////////////// PRICING  STARTS ///////////////
+    
+    /**
+     * getPrices
+     */
+    function getPrices(string memory _tld) 
+        public 
+        view 
+        onlyValidLabel(_tld)
+        tldExists(_tld)
+        returns (DomainPrices memory) 
+    {
+        return domainPrices[getTLDNameHash(_tld)];
+    }
+
+    /**
+     * @dev get domain price 
+     * @param _label the label part of a domain
+     */
+    function getPrice(
+        string memory _tld,
+        string memory _label
+    ) 
+        public 
+        view
+        onlyValidLabel(_tld)
+        tldExists(_tld)
+        onlyValidLabel(_label)
+        returns(uint256)
+    {   
+        
+        DomainPrices memory _domainPrices = getPrices(_tld);
+
+        uint labelSize = bytes(_label).length;
+
+        require(labelSize > 0, "BNSRegistry#LABEL_REQUIRED");
+
+        uint256 _p;
+
+        if(labelSize == 1)      _p = _domainPrices.one;
+        else if(labelSize == 2) _p = _domainPrices.two;
+        else if(labelSize == 3) _p = _domainPrices.three;
+        else if(labelSize == 4) _p = _domainPrices.four;
+        else                    _p = _domainPrices.fivePlus;
+
+        return _p;
+    }
+
+
+    ////////////// PRICING ENDS //////////////////
 
 
     ////////////////// Domains counts /////////////
@@ -225,27 +277,30 @@ contract BNS is
 
      /**
      * @dev addTLD adds a deployed tld info
-     * @param _name the tld name 
-     * @param _addr the tld contract address
+     * @param _domainExt the tld domain extension name 
+     * @param _assetAddress the tld contract address
+     * @param _domainPrices the domain prices 
      */
     function addTLD(
-        string memory _name,
-        address _addr
+        string memory       _domainExt,
+        address             _assetAddress,
+        DomainPrices memory _domainPrices
     )
         public 
         onlyOwner
-        onlyValidLabel(_name)
+        onlyValidLabel(_domainExt)
     {
 
-        bytes32 _node = getTLDNameHash(_name);
+        bytes32 _node = getTLDNameHash(_domainExt);
 
-        require(registryInfo[_node] != address(0), "BNS#addTLD: TLD_ALREADY_EXISTS");
+        require(registryInfo[_node] == address(0), "BNS#addTLD: TLD_ALREADY_EXISTS");
 
-        registryInfo[_node] = _addr;
+        registryInfo[_node] = _assetAddress;
+        domainPrices[_node] = _domainPrices;
 
         registryIds.push(_node);
 
-        emit AddTLD(_name, _addr, _node);
+        emit AddTLD(_domainExt, _assetAddress, _node);
     } //end
 
     /**
@@ -264,15 +319,19 @@ contract BNS is
     function getTLD(string memory _tld) 
         public
         view 
-        returns (RegistryInfo memory _regInfo)
+        returns (
+            RegistryInfo memory _regInfo,
+            DomainPrices memory _domainPrices
+        )
     {   
         bytes32 _node = getTLDNameHash(_tld);
         address registryAddr = registryInfo[_node];
 
         if(registryAddr == address(0)){
-            return _regInfo;
+            return (_regInfo, _domainPrices);
         }    
 
+        _domainPrices = domainPrices[_node];
         _regInfo = IRegistry(registryAddr).getRegistryInfo();
     } //end 
 
@@ -284,16 +343,21 @@ contract BNS is
     function getAllTLDs() 
         public
         view 
-        returns (RegistryInfo[] memory)
+        returns (
+            RegistryInfo[] memory,
+            DomainPrices[] memory
+        )
     {   
 
         RegistryInfo[] memory _regDataArray = new RegistryInfo[](registryIds.length);
+        DomainPrices[] memory _domainPrices = new DomainPrices[](registryIds.length);
 
         for(uint256 i=0; i < registryIds.length; i++) {
             _regDataArray[i] = IRegistry(registryInfo[registryIds[i]]).getRegistryInfo();
+            _domainPrices[i] = domainPrices[registryIds[i]];
         }
 
-        return _regDataArray;
+        return (_regDataArray, _domainPrices);
     }
     /////////// END TLD Functions ///////////
 
@@ -350,25 +414,26 @@ contract BNS is
     )
         public
         onlyValidLabel(_tld)
-         nonReentrant()
+        tldExists(_tld)
+        nonReentrant()
         payable
     {   
 
         validateRequestAuth(authInfo);
    
-        address _tldRegistry = getRegistry(_tld);
+        require(getRegistry(_tld) != address(0), "BNS#registerDomain: INVALID_TLD");
 
-        require(_tldRegistry != address(0), "BNSCore#registerDomain: INVALID_TLD");
+        IRegistry _iregistry = IRegistry(getRegistry(_tld));
 
-        IRegistry _iregistry = IRegistry(_tldRegistry);
-
-        uint256 amountUSDT = _iregistry.getPrice(_label);
+        //uint256 amountUSD = getPrice(_tld, _label);
 
         PaymentTokenDef memory _pTokenInfo = paymentTokens[paymentTokensIndexes[paymentToken]];
 
-        uint256 tokenAmount = PriceFeed.toTokenAmount(amountUSDT, _pTokenInfo);
+        require(_pTokenInfo.tokenAddress != address(0), "BNS#registerDomain: INVALID_PAYMENT_TOKEN");
 
-        if(paymentToken == address(0)) {
+        uint256 tokenAmount = PriceFeed.toTokenAmount(getPrice(_tld, _label), _pTokenInfo);
+
+        if( paymentToken == nativeAssetAddress ) {
 
      
             if(_priceSlippageToleranceRate > 0){
@@ -383,8 +448,7 @@ contract BNS is
 
             IERC20 _erc20 = IERC20(paymentToken);
             require( _erc20.balanceOf(_msgSender()) >= tokenAmount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
-
-            require(_erc20.transferFrom(_msgSender(), address(this), tokenAmount), "BNSCore#AMOUNT_TRANSFER_FAILED");
+            require(IERC20(paymentToken).transferFrom(_msgSender(), address(this), tokenAmount), "BNSCore#AMOUNT_TRANSFER_FAILED");
         }
 
         //send affiliate payment
@@ -406,7 +470,7 @@ contract BNS is
         uint256 _domainId = ++totalDomains;
 
         domainsInfo[_domainId] = DomainInfoDef({
-            assetAddress:   _tldRegistry,
+            assetAddress:   getRegistry(_tld),
             tokenId:        _tokenId,
             node:           _node,
             userAddress:    _msgSender()
@@ -415,10 +479,8 @@ contract BNS is
         // add to user's domains collection
         domainIdsByAccount[_msgSender()].push(_domainId);
 
-        bytes32 tldHash = getTLDNameHash(_tld);
-
         // add to tld collection
-        domainIdsByTLD[tldHash].push(_domainId);
+        domainIdsByTLD[getTLDNameHash(_tld)].push(_domainId);
 
         domainIdByNode[_node] = _domainId;
 
@@ -446,7 +508,7 @@ contract BNS is
     ) 
         private 
     {   
-        if(tokenAddress == address(0)){
+        if(tokenAddress == nativeAssetAddress){
 
              (bool success, ) = _to.call{ value: amount }("");
             require(success, "TransferBase#transfer: NATIVE_TRANSFER_FAILED");
@@ -542,9 +604,15 @@ contract BNS is
             "BNS#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED"
         );
 
+        address _tokenAddress = _pTokenInfo.tokenAddress;
+
+        if(_tokenAddress == nativeAssetAddress){
+            _tokenAddress = getWETH(_pTokenInfo.dexInfo.router);
+        }
+
         _pTokenInfo.dexInfo.pricePairToken =  getUniswapPairToken(
             _pTokenInfo.dexInfo.factory,
-            _pTokenInfo.tokenAddress,
+            _tokenAddress,
             defaultStableCoin
         );
 

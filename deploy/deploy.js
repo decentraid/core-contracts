@@ -3,7 +3,7 @@ const Utils = require("../classes/Utils")
 const path = require("path")
 const secretsConfig = require("../.secrets.js")
 const fsp = require("fs/promises")
-const tldsArray = require("../tlds/tlds")
+const defaultDomainPrices = require("../config/domainPrices.js")
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -19,10 +19,28 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         let networkName = network.name;
         let chainId = (await ethers.provider.getNetwork()).chainId;
 
+        let signer = await ethers.getSigner(owner)
+
+        //console.log("signer=====>", signer)
+
         Utils.successMsg(`ProxyAdmin: ${proxyAdmin}`)
         Utils.successMsg(`owner: ${owner}`)
         Utils.successMsg(`networkName: ${networkName}`)
         Utils.successMsg(`chainId: ${chainId}`)
+        
+        let configFileName = (networkName.startsWith("local")) ? "local" : networkName;
+
+        let TLDsFile = require(`../config/TLDs/${configFileName}.js`)
+
+        let TLDsArrayData = await TLDsFile(networkName)
+
+        await deployMockToken(deploy, networkName, owner)
+
+        let _paymentTokenConfigFile = require(`../config/paymentTokens/${configFileName}.js`)
+
+        let paymentTokenConfig = await _paymentTokenConfigFile(networkName)
+
+        //console.log("paymentTokenConfig===>", paymentTokenConfig)
 
         /////////////// DEPLOYING PUBLIC RESOLVER & REGISTRAR ////////
         Utils.infoMsg("Deploying TLDS BNS Public Registrar Contract")
@@ -37,17 +55,16 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                   methodName: "initialize",
                   args: [
                         owner, // signer
-                        owner, // treasury address
-                        owner, // default stable coin
+                        zeroAddress, // treasury address
+                        paymentTokenConfig.defaultStablecoin, // default stable coin
                     ]
                 }
             }
             
         });
 
-        //console.log("deployedtRegistrarContract====>", deployedtRegistrarContract)
-
-        return;
+        //console.log("deployedtRegistrarContract=-=======>>>>>", deployedtRegistrarContract)
+        
 
         Utils.successMsg(`Registrar Deloyed: ${deployedtRegistrarContract.address}`);
 
@@ -59,7 +76,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         //let bnsTLDParamArray = []
 
-        for(let tldObj of tldsArray){
+        for(let tldObj of TLDsArrayData){
 
             //console.log("tldObj====>", tldObj)
 
@@ -98,20 +115,80 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         
         ////////////// UPDATE BNS REGISTRAR AND ADD TLD DATA /////
 
-        let addToRegistrarParam = []
+        let addTldMulticallParams = []
 
-        let ABI = ["function addTLD(string memory _name,address _addr)"]
+        const iface = new ethers.utils.Interface(deployedtRegistrarContract.abi);
 
-        const iface = new ethers.utils.Interface(ABI);
+        const _domainPrices =  processDomainPrices(ethers, defaultDomainPrices)
 
-        for(let tldObj of tldsArray){
-            
+        for(let registryName in deployedTLDInfo){
+
+            let registryAddr = deployedTLDInfo[registryName];
+
+            let data = iface.encodeFunctionData("addTLD", [registryName, registryAddr, _domainPrices ]);
+
+            addTldMulticallParams.push(data)
         }
+
+        let registrarContract = new ethers.Contract(
+                                deployedtRegistrarContract.address,
+                                deployedtRegistrarContract.abi,
+                                signer
+                            )
+        
+        let addTldMulticall = await registrarContract.multicall(addTldMulticallParams)
+
+        console.log("addTldMulticall====>", addTldMulticall)
+
         /////////// END //////
 
-        console.log("deployedData===>", deployedData)
+       
     } catch(e) {
         console.log(e,e.stack)
     }
 
+}
+
+function processDomainPrices(ethers, domainPricesObj) {
+    
+    let dataValues = []
+    let dataTypes = []
+
+    let bn = ethers.BigNumber;
+    let tenExponent = bn.from(10).pow(18)
+
+    for(let key of Object.keys(domainPricesObj)){
+        let valueBN = bn.from(domainPricesObj[key].toString()).mul(tenExponent)
+        dataValues.push(valueBN)
+        dataTypes.push("uint256")
+    }
+
+    //let encodedData = ethers.utils.AbiCoder.prototype.encode(dataTypes, dataValues)
+
+    return dataValues;
+}
+
+
+async function deployMockToken (deploy, networkName, owner) {
+    if(["hardhat", "local", "localhost"].includes(networkName)){
+
+        isLocalDev = true;
+    
+        ///////////////////////// USDC Mock Address //////////////
+        Utils.infoMsg("Deploying ERC20 USDC Mock Token ");
+    
+        let deployedUsdcContract = await deploy('UsdcToken', {
+            from: owner,
+            args: [],
+            log:  false
+        });
+    
+        let usdcTokenContractAddress = deployedUsdcContract.address;
+    
+    
+        Utils.successMsg("Deployed ERC20 USDC Mock Token Address: "+ usdcTokenContractAddress);
+    
+        ///////////////// END USDC MOCK ADDRESS ////////////////////////////
+        return { usdc: usdcTokenContractAddress }
+    }
 }

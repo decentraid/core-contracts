@@ -7,6 +7,7 @@
 pragma solidity ^0.8.0;
 
 import "./NameLabelRegex.sol";
+import "hardhat/console.sol";
 
 contract NameUtils  {
 
@@ -16,7 +17,8 @@ contract NameUtils  {
     * only valid punnyCode label format
     */    
     modifier onlyValidLabel(string memory nameLabel) {
-        require( isValidNameLabel(nameLabel), "BNS#NameUtils: INVALID_LABEL_PUNNYCODE_FORMAT");
+        console.log("nameLabel=========================================>>>>>>>>>>>>",nameLabel);
+        require(nameLabel.matches(), "BNS#NameUtils: INVALID_LABEL_PUNNYCODE_FORMAT");
         _;
     }
 

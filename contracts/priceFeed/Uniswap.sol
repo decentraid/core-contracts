@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "../Defs.sol";
 import "../libs/@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "../libs/@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
+import "../libs/@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 
 contract Uniswap is Defs {
 
@@ -56,6 +57,20 @@ contract Uniswap is Defs {
         returns(address)
     {
         return IUniswapV2Factory(_factory).getPair(_tokenA, _tokenB);
+    }
+
+
+    /**
+     * getWeth
+     */
+    function getWETH(
+        address _router
+    )
+        public 
+        view 
+        returns(address)
+    {
+        return IUniswapV2Router01(_router).WETH();
     }
 
 }

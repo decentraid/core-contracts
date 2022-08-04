@@ -80,21 +80,12 @@ contract BNSRegistry is
 
         __TextResolver_init();
 
-        // set default prices in busd
-        _domainPrices = DomainPrices({
-            one:        6000 * (10 ** 18),
-            two:        3000 * (10 ** 18),
-            three:      680  * (10 ** 18),
-            four:       200  * (10 ** 18),
-            fivePlus:   25   * (10 ** 18)
-        });
-
+    
         _registryInfo = RegistryInfo({
             label:              _tldName,
             namehash:           getTLDNameHash(_tldName),
             assetAddress:       address(this),
             webHost:            _webHost,
-            domainPrices:       _domainPrices,
             minDomainLength:    2,
             maxDomainLength:    0, // 0 means no limit
             createdAt:          block.timestamp,
@@ -189,39 +180,7 @@ contract BNSRegistry is
         emit SetPrices();
     }
 
-    /**
-     * getPrices
-     */
-    function getPrices() public view returns (DomainPrices memory) {
-        return _domainPrices;
-    }
-
-    /**
-     * @dev get domain price 
-     * @param _label the label part of a domain
-     */
-    function getPrice(string memory _label) 
-        public 
-        view
-        onlyValidLabel(_label)
-        returns(uint256)
-    {   
-        
-        uint labelSize = bytes(_label).length;
-
-        require(labelSize > 0, "BNSRegistry#LABEL_REQUIRED");
-
-        uint256 _p;
-
-        if(labelSize == 1)      _p = _domainPrices.one;
-        else if(labelSize == 2) _p = _domainPrices.two;
-        else if(labelSize == 3) _p = _domainPrices.three;
-        else if(labelSize == 4) _p = _domainPrices.four;
-        else                    _p = _domainPrices.fivePlus;
-
-        return _p;
-    }
-
+  
     /**
      * @dev mint a token
      * @param _to the address to mint to

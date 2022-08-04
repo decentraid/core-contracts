@@ -35,13 +35,13 @@ module.exports = {
 
     hardhat: {
       accounts: [{privateKey: `0x${accountPrivateKey}`, balance: "91229544000000000000"}],
-      //forking: {
-          //url: `https://speedy-nodes-nyc.moralis.io/${moralisApiKey}/bsc/mainnet`
-    //  },
+      forking: {
+          url: `https://rpc.ankr.com/bsc_testnet_chapel`
+      },
     },
     
     bsc_testnet: {
-      url:  `https://data-seed-prebsc-2-s3.binance.org:8545/`,
+      url:  `https://rpc.ankr.com/bsc_testnet_chapel`,
       chainId: 97,
       ///gasPrice: 20000000000,
       accounts: [`0x${accountPrivateKey}`]

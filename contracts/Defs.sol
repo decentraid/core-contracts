@@ -52,7 +52,7 @@ contract Defs {
         string          webHost;
         uint            minDomainLength;
         uint            maxDomainLength;
-        DomainPrices    domainPrices;     
+       // DomainPrices    domainPrices;     
         uint256         createdAt;
         uint256         updatedAt;
     }
@@ -83,4 +83,5 @@ contract Defs {
         bytes32   node;
         address   userAddress;
     }
+ 
 }

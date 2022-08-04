@@ -22,6 +22,8 @@ contract BnsBase is
 
     mapping(bytes32  => address) public registryInfo;
     bytes32[] public registryIds;
+
+    mapping(bytes32 => DomainPrices) public domainPrices;
     
     //// Payment Tokens //////
 
@@ -49,6 +51,9 @@ contract BnsBase is
 
     ////////  End Registered Domains //// 
 
+    // native asset Address 
+    address public nativeAssetAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
     // request signer 
     address _signer;
 
@@ -64,4 +69,12 @@ contract BnsBase is
     address public defaultStableCoin;
 
     uint256 _priceSlippageToleranceRate;
+
+    /**
+     * tld Exists 
+     */
+    modifier tldExists(string memory _tld) {
+        require(registryInfo[getTLDNameHash(_tld)] != address(0), "BNS#tldExists: UNKNOWN_TLD");
+        _;
+    }
 }
