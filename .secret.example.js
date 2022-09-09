@@ -1,10 +1,9 @@
 /** 
-* Binance Name Service
-* @website github.com/binance-name
-* @author Team BNS <hello@binance.name>
+* Blockchain Domains
+* @website github.com/bnsprotocol
+* @author Team BNS <hello@bns.gg>
 * @license SPDX-License-Identifier: MIT
-* Kindly rename the file to .secret.js
-*/
+*/ 
 
 module.exports = {
     

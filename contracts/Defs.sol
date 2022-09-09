@@ -83,5 +83,19 @@ contract Defs {
         bytes32   node;
         address   userAddress;
     }
+
+    struct GradientColor {
+        string offset;
+        string color;
+    }
+
+    struct SvgImageProps {
+        string          x1;
+        string          y1;
+        string          x2;
+        string          y2;
+        GradientColor[] gradientColors;
+        string          textColor;
+    }
  
 }

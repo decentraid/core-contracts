@@ -2,7 +2,7 @@
 //bnb testnet
  module.exports = async (network) => {
     return {
-        defaultStableCoin: "0x5ea7D6A33D3655F661C298ac8086708148883c34",
+        defaultStablecoin: "0x5ea7D6A33D3655F661C298ac8086708148883c34",
         paymenTokens: [
             {
                 symbol: "bnb",

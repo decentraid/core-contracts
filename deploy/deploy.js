@@ -1,8 +1,15 @@
+/** 
+* Blockchain Domains
+* @website github.com/bnsprotocol
+* @author Team BNS <hello@bns.gg>
+* @license SPDX-License-Identifier: MIT
+*/ 
 const hre = require("hardhat")
 const Utils = require("../classes/Utils")
 const path = require("path")
 const secretsConfig = require("../.secrets.js")
 const fsp = require("fs/promises")
+const _lodash = require("lodash")
 const defaultDomainPrices = require("../config/domainPrices.js")
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
@@ -12,6 +19,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
     try{
 
         let deployedData = {}
+        let deployedContractsAddresses = {}
         let deployedTLDInfo = {}
 
         const {deploy} = deployments;
@@ -45,7 +53,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         /////////////// DEPLOYING PUBLIC RESOLVER & REGISTRAR ////////
         Utils.infoMsg("Deploying TLDS BNS Public Registrar Contract")
 
-        let deployedtRegistrarContract = await deploy('BNS', {
+        let deployedtRegistrarContract = await deploy('PublicRegistrar', {
             from: owner,
             log: true,
             proxy: {
@@ -68,13 +76,18 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         Utils.successMsg(`Registrar Deloyed: ${deployedtRegistrarContract.address}`);
 
-        deployedData["registrar"] = deployedtRegistrarContract.address;
+        deployedContractsAddresses["registrar"] = deployedtRegistrarContract.address;
 
         ///////// END PUBLIC RESOLVER & REGISTRAR /////////
       
         Utils.infoMsg("Deploying TLDS BNSRegistry Contract")
 
         //let bnsTLDParamArray = []
+
+        // minters 
+        let mintersArray = [owner, deployedtRegistrarContract.address]
+
+        let lastDeployedRegistry;
 
         for(let tldObj of TLDsArrayData){
 
@@ -95,7 +108,8 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                             tldObj.name,
                             tldObj.symbol,
                             tldObj.tldName,
-                            tldObj.webHost
+                            tldObj.webHost,
+                            mintersArray
                         ]
                     }
                 }
@@ -108,9 +122,10 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
             deployedTLDInfo[tldObj.tldName] = tldContractAddress;
 
+            lastDeployedRegistry = deployedRegistryContract;
         }
 
-        deployedData["registries"] = deployedTLDInfo;
+        deployedContractsAddresses["registries"] = deployedTLDInfo;
         ///////////////////////// EXPORT CONTRACT INFO /////////////////////
         
         ////////////// UPDATE BNS REGISTRAR AND ADD TLD DATA /////
@@ -136,13 +151,66 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                                 signer
                             )
         
+        Utils.infoMsg("Running addTLD in multicall mode ")
+        
         let addTldMulticall = await registrarContract.multicall(addTldMulticallParams)
 
-        console.log("addTldMulticall====>", addTldMulticall)
+        Utils.successMsg("addTLD multicall success: "+ addTldMulticall.hash)
 
         /////////// END //////
 
-       
+        //exporting contract info
+        Utils.successMsg("Exporting contract info")
+
+        let contractInfoExportPaths = secretsConfig.contractInfoExportPaths || []
+
+        for(let configDirPath of contractInfoExportPaths){
+
+            //lets create the path 
+            await fsp.mkdir(configDirPath, {recursive: true})
+
+            let configFilePath = `${configDirPath}/${chainId}.json`;
+
+            // lets now fetch the data 
+            let contractInfoData = {}
+
+            try {
+                contractInfoData = require(configFilePath)
+            } catch(e){}
+
+            contractInfoData = _lodash.merge({},contractInfoData, deployedContractsAddresses)
+
+            Utils.infoMsg(`New Config For ${networkName} - ${JSON.stringify(contractInfoData, null, 2)}`)
+
+            Utils.successMsg(`Saving ${chainId} contract info to ${configFilePath}`)
+            console.log()
+
+            //lets save it back
+            await fsp.writeFile(configFilePath, JSON.stringify(contractInfoData, null, 2));
+       }
+
+
+
+       Utils.successMsg(`Exporting abi files`);
+
+       await hre.run("export-abi");
+
+        // let export the abi
+        let abiExportsPathsArray = secretsConfig.abiExportPaths || []
+
+        for(let exportPath of abiExportsPathsArray) {
+            
+            await fsp.mkdir(exportPath, {recursive: true})
+            
+            Utils.successMsg(`Exporting registrar.json to ${exportPath}/registrar.json`);
+            await fsp.writeFile(`${exportPath}/${chainId}/registrar.json`, JSON.stringify(deployedtRegistrarContract.abi, null, 2));
+
+            if(lastDeployedRegistry != null){
+                Utils.successMsg(`Exporting registry.json to ${exportPath}/registry.json`);
+                await fsp.writeFile(`${exportPath}/${chainId}/registry.json`, JSON.stringify(lastDeployedRegistry.abi, null, 2));
+            }
+        }
+
     } catch(e) {
         console.log(e,e.stack)
     }

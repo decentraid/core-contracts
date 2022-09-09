@@ -17,15 +17,16 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Burnab
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
-import "contracts/Defs.sol";
+import "../Defs.sol";
 import "../roles/Roles.sol";
-import "contracts/utils/NameUtils.sol";
-import "contracts/ContractBase.sol";
-import "contracts/resolvers/AddressResolver.sol";
-import "contracts/resolvers/TextResolver.sol";
+import "../utils/NameUtils.sol";
+import "../ContractBase.sol";
+import "../resolvers/AddressResolver.sol";
+import "../resolvers/TextResolver.sol";
+import "../utils/NFTMetadata.sol";
 import "hardhat/console.sol";
 
-contract BNSRegistry is
+contract Registry is
     ContractBase,
     Roles,
     ERC721Upgradeable,
@@ -35,7 +36,8 @@ contract BNSRegistry is
     ERC721EnumerableUpgradeable,
     ERC165StorageUpgradeable,
     AddressResolver,
-    TextResolver
+    TextResolver,
+    NFTMetadata
  {
 
     event RegisterDomain(uint256 tokenId, bytes32 nameHash);
@@ -59,7 +61,8 @@ contract BNSRegistry is
         string          memory  _name,
         string          memory  _symbol,
         string          memory  _tldName,
-        string          memory  _webHost
+        string          memory  _webHost,
+        address[]       memory  _extraMinters
     )
         public 
         initializer 
@@ -92,7 +95,13 @@ contract BNSRegistry is
             updatedAt:          block.timestamp
         });
         
-    }
+
+        // lets add more minters 
+        for(uint256 i = 0; i < _extraMinters.length; i++) {
+            addMinter(_extraMinters[i]);
+        } //end loop
+
+    } //end  initialize
 
 
     /**
@@ -122,7 +131,7 @@ contract BNSRegistry is
     }
 
     modifier onlyTokenOwner(uint256 tokenId) {
-        require(ownerOf(tokenId) == _msgSender(), "BNSRegistry: NOT_OWNER");
+        require(ownerOf(tokenId) == _msgSender(), "Registry: NOT_OWNER");
         _;
     }
     
@@ -137,7 +146,7 @@ contract BNSRegistry is
     {
         
         //first lets check if the node is a tld, if yes, we send it
-        require(_registryInfo.namehash != _node, "BNSRegistry#getRecord: REGISTRY_NODE_PROVIDED");
+        require(_registryInfo.namehash != _node, "Registry#getRecord: REGISTRY_NODE_PROVIDED");
 
         return _records[_node];
     }
@@ -185,17 +194,21 @@ contract BNSRegistry is
      * @dev mint a token
      * @param _to the address to mint to
      * @param _label the name of the domain
+     * @param _svgImgProps the properties used for generating svg for imageUri
      */
     function _mintDomain(
         address _to,
-        string   calldata _label
+        string   calldata _label,
+        SvgImageProps  memory  _svgImgProps
     ) 
         private 
         onlyValidLabel(_label)
         onlyMinter
         returns(uint256 _tokenId, bytes32 _node) 
     {
-        
+
+        require( !strMatches(_label, _registryInfo.label), "Registry#_mintDomain: LABEL_CANNOT_BE_TLD_NAME");
+
         _tokenIdCounter.increment();
 
         _tokenId = _tokenIdCounter.current();
@@ -207,28 +220,20 @@ contract BNSRegistry is
         if(isAdmin(_msgSender())){
             minLabelLength = 1;
         }
-
-        //require(_matadataKeys.length  == _metadataValues.length, "BNS#ERC721Registry: unmatched data size for metadata keys & values");
+        
 
         //lets now create our record 
         require(
             bytes(_label).length >= minLabelLength, 
-            string(abi.encodePacked("BNSRegistry#_mintDomain: LABEL_MUST_EXCEED_", _registryInfo.minDomainLength, "_CHARACTERS"))
+            string(abi.encodePacked("Registry#_mintDomain: LABEL_MUST_EXCEED_", _registryInfo.minDomainLength, "_CHARACTERS"))
         );
-    
-        // _registryInfo.maxDomainLength == 0 means no limit
-        /*if(_registryInfo.maxDomainLength > 0) {
-            require(
-                bytes(_label).length <= _registryInfo.maxDomainLength, 
-                string(abi.encodePacked("BNSRegistry#_mintDomain: label must not exceed ", _registryInfo.minDomainLength, " characters"))
-            );
-        }*/
+
 
         //lets get the domain hash
         _node = nameHash(_label, _registryInfo.namehash);
 
         // lets check if the domainHash exists
-        require(_records[_node].tokenId == 0, "BNSRegistry#_mintDomain: DOMAIN_TAKEN");
+        require(_records[_node].tokenId == 0, "Registry#_mintDomain: DOMAIN_TAKEN");
 
         _records[_node] = Record({
             label:              _label,
@@ -244,21 +249,23 @@ contract BNSRegistry is
 
         // lets create a reverse token id 
         _tokenIdToNodeMap[_tokenId] = _node;
+        _svgImagesProps[_node] = _svgImgProps;
 
-       emit MintDomain(_tokenId, _to);
+        emit MintDomain(_tokenId, _to);
     }
 
 
     function addDomain(
-        address _to,
-        string   calldata _label
+        address     _to,
+        string      calldata _label,
+        SvgImageProps  memory  _svgImgProps
     ) 
         public 
         onlyValidLabel(_label)
         onlyMinter
         returns(uint256 _tokenId, bytes32 _node) 
     {
-        return _mintDomain(_to, _label);
+        return _mintDomain(_to, _label, _svgImgProps);
     }
 
     /**
@@ -278,7 +285,7 @@ contract BNSRegistry is
 
         Record memory _parentRecord = _records[_parentNode];
 
-        require(_parentRecord.createdAt > 0, "BNSRegistry#_mintSubdomain: PARENT_NODE_NOT_FOUND");
+        require(_parentRecord.createdAt > 0, "Registry#_mintSubdomain: PARENT_NODE_NOT_FOUND");
 
         bytes32 _primaryNode;
         Record memory _primaryRecord;
@@ -337,6 +344,51 @@ contract BNSRegistry is
 
     }
 
+    /**
+     * @dev get domain from token Id 
+     * @param _tokenId the token id
+     */
+    function getDomain(uint256 _tokenId) 
+        public 
+        view 
+        returns(string memory)
+    {
+        return reverseNode(_tokenIdToNodeMap[_tokenId]);
+    }
+
+    /**
+     * reverseNode
+     */
+    function reverseNode(bytes32 _node) 
+        override
+        public 
+        view 
+        returns(string memory)
+    {
+
+        if(_node ==  _registryInfo.namehash){
+            return _registryInfo.label;
+        }
+
+        bytes memory _result = abi.encodePacked("");
+
+        while(true){
+            
+            Record memory _record = getRecord(_node);
+
+            _result =  abi.encodePacked(_result,".");
+
+            if(_record.parentNode == _registryInfo.namehash){
+                _result =  abi.encodePacked(_result,_registryInfo.label);
+                break;
+            } else {
+                _node = _record.parentNode;
+            }
+        }
+
+        return string(_result);
+    }
+
 
     //////////////////////////// Overrides Starts  //////////////////////////
 
@@ -357,7 +409,7 @@ contract BNSRegistry is
         override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
         returns (string memory)
     {
-        return super.tokenURI(tokenId);
+        return getTokenURI(tokenId);
     }
     
     /**
@@ -374,7 +426,7 @@ contract BNSRegistry is
     {   
         
         if(_records[_tokenIdToNodeMap[tokenId]].nodeType == NodeType.SUBDOMAIN){
-            revert("BNSRegistry#_beforeTokenTransfer: SUBDOMAINS_NOT_TRANSFERABLE");
+            revert("Registry#_beforeTokenTransfer: SUBDOMAINS_NOT_TRANSFERABLE");
         }   
 
         delete _reverseAddress[from];
@@ -409,7 +461,7 @@ contract BNSRegistry is
     function ownerOf(uint256 tokenId) 
         public 
         view
-        override 
+        override(ERC721Upgradeable, IERC721Upgradeable)
         returns 
         (address) 
     {

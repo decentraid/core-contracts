@@ -44,4 +44,13 @@ contract Roles is Initializable, ContextUpgradeable, AccessControlUpgradeable {
         _;
     }
 
+    /**
+     * add minter
+     */
+    function addMinter(address _addr) 
+        public 
+        onlyAdmin
+    {
+        grantRole(MINTER_ROLE, _addr);
+    }
 }

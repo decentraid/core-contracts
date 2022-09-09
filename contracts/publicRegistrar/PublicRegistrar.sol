@@ -6,7 +6,7 @@
 */ 
 pragma solidity ^0.8.0;
 
-import "./BnsBase.sol";
+import "./RegistrarBase.sol";
 //import "contracts/Defs.sol"; // in IRegistry
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
@@ -16,13 +16,13 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-contract BNS is 
+contract PublicRegistrar is 
     Initializable,
     ContextUpgradeable,
     OwnableUpgradeable,
     MulticallUpgradeable,
     ReentrancyGuardUpgradeable,
-    BnsBase 
+    RegistrarBase 
 {
 
 
@@ -406,11 +406,12 @@ contract BNS is
      * @param affiliateAddr the affiliate address who refered the user
      */
     function registerDomain(
-        string memory _label,
-        string memory _tld,
-        address paymentToken,
-        address affiliateAddr,
-        RequestAuthInfo memory authInfo 
+        string                      memory _label,
+        string                      memory _tld,
+        address                     paymentToken,
+        address                     affiliateAddr,
+        SvgImageProps   memory      svgImgInfo, // background info
+        RequestAuthInfo memory      authInfo 
     )
         public
         onlyValidLabel(_tld)
@@ -464,7 +465,8 @@ contract BNS is
             );
         }
 
-        (uint256 _tokenId, bytes32 _node) = _iregistry.addDomain(_msgSender(), _tld);
+        // register the domain
+        (uint256 _tokenId, bytes32 _node) = _iregistry.addDomain(_msgSender(), _label, svgImgInfo);
 
         // increment and assign +1
         uint256 _domainId = ++totalDomains;

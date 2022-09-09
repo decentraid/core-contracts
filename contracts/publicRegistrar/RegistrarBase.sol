@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interface/IRegistry.sol";
 import "../priceFeed/PriceFeed.sol";
 
-contract BnsBase is 
+contract RegistrarBase is 
     Defs,
     NameUtils,
     PriceFeed
@@ -77,4 +77,6 @@ contract BnsBase is
         require(registryInfo[getTLDNameHash(_tld)] != address(0), "BNS#tldExists: UNKNOWN_TLD");
         _;
     }
+
+    
 }

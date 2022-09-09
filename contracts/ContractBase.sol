@@ -116,5 +116,13 @@ contract ContractBase is DataStore, NameUtils {
     {
         return _records[node].createdAt > 0;
     }
-    
+
+    /**
+    * @dev compare tw strings 
+    * @param a the first str 
+    * @param b the second str
+    */   
+    function strMatches(string memory a, string memory b) public pure returns (bool) {
+        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
+    }
 }

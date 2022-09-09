@@ -1,9 +1,9 @@
 /** 
-* Binance Name Service
-* @website github.com/binance-name
-* @author Team BNS <hello@binance.name>
+* Blockchain Domains
+* @website github.com/bnsprotocol
+* @author Team BNS <hello@bns.gg>
 * @license SPDX-License-Identifier: MIT
-*/
+*/ 
 
 require("@nomiclabs/hardhat-waffle");
 
@@ -63,12 +63,13 @@ module.exports = {
   },
 
   solidity: {
-    version: "0.8.4",
+    version: "0.8.16",
       settings: {
-          optimizer: {
-            enabled: true,
-            runs: 1
-          }
+        viaIR: true,
+        optimizer: {
+          enabled: true,
+          runs: 1
+        }
       }
   },
 

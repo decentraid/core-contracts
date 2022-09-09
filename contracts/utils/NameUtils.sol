@@ -17,7 +17,6 @@ contract NameUtils  {
     * only valid punnyCode label format
     */    
     modifier onlyValidLabel(string memory nameLabel) {
-        console.log("nameLabel=========================================>>>>>>>>>>>>",nameLabel);
         require(nameLabel.matches(), "BNS#NameUtils: INVALID_LABEL_PUNNYCODE_FORMAT");
         _;
     }
