@@ -1,41 +1,33 @@
 /** 
-* Binance Name Service
-* @website github.com/binance-name
-* @author Team BNS <hello@binance.name>
+* Blockchain Domains
+* @website github.com/bdomains
+* @author BDN Team <hello@bdomains.org>
 * @license SPDX-License-Identifier: MIT
 */
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/Base64Upgradeable.sol";
-import "contracts/ContractBase.sol";
+import "../Defs.sol";
 
-abstract contract NFTMetadata is ContractBase {
+contract MetadataGen is Defs {
 
     // implementation in registry contract
-    function reverseNode(bytes32 _node) virtual public view returns(string memory);
+    //function reverseNode(bytes32 _node) virtual public view returns(string memory);
 
     function getTokenURI(
-        uint256 tokenId
+        string memory _domain,
+        SvgImageProps memory _svgImgInfo
     )
-        internal
-        view 
+        public
+        pure 
         returns (string memory) 
     {
 
-        // lets get the node 
-        Record memory _recordInfo = _records[_tokenIdToNodeMap[tokenId]];
-
-       if(!recordExists(_recordInfo.namehash)){
-            return ""; 
-       }
-
-       string memory _domainName = reverseNode(_recordInfo.namehash);
-
-       string memory _image = getImage(_domainName, _svgImagesProps[_recordInfo.namehash]);
+       string memory _image = getImage(_domain, _svgImgInfo);
 
         bytes memory metadata = abi.encodePacked(
             '{',
-                '"name:"', '"',_domainName,'"',
+                '"name:"', '"',_domain,'"',
                 '"description:"', '""',
                 '"image:"', '"', _image,'"'
             '}' 
@@ -58,13 +50,12 @@ abstract contract NFTMetadata is ContractBase {
         string memory _text,
         SvgImageProps memory _svgImgProps 
     )
-        internal
+        public
         pure 
         returns (string memory)
     {
 
         bytes memory gColors = abi.encodePacked();
-        //GradientColor memory _savedColors = _svgImgProps.gradientColors;
 
         for(uint i = 0; i < _svgImgProps.gradientColors.length; i++){
             gColors = abi.encodePacked(

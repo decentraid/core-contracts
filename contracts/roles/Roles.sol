@@ -53,4 +53,5 @@ contract Roles is Initializable, ContextUpgradeable, AccessControlUpgradeable {
     {
         grantRole(MINTER_ROLE, _addr);
     }
+
 }

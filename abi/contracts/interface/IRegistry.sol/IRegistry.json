@@ -10,6 +10,55 @@
         "internalType": "string",
         "name": "_label",
         "type": "string"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "x1",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "y1",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "x2",
+            "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "y2",
+            "type": "string"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "offset",
+                "type": "string"
+              },
+              {
+                "internalType": "string",
+                "name": "color",
+                "type": "string"
+              }
+            ],
+            "internalType": "struct Defs.GradientColor[]",
+            "name": "gradientColors",
+            "type": "tuple[]"
+          },
+          {
+            "internalType": "string",
+            "name": "textColor",
+            "type": "string"
+          }
+        ],
+        "internalType": "struct Defs.SvgImageProps",
+        "name": "_svgImgInfo",
+        "type": "tuple"
       }
     ],
     "name": "addDomain",

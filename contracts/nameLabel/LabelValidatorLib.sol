@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-library NameLabelRegex {
+library LabelValidatorLib {
+
   struct State {
     bool accepts;
     function (bytes1) pure internal returns (State memory) func;
@@ -125,7 +126,11 @@ library NameLabelRegex {
     return State(false, s0);
   }
 
-  function matches(string memory input) internal pure returns (bool) {
+  function matches(string memory input) 
+    internal 
+    pure 
+    returns (bool) 
+  {
     State memory cur = State(false, s1);
 
     for (uint i = 0; i < bytes(input).length; i++) {

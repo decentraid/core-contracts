@@ -48,10 +48,40 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         let paymentTokenConfig = await _paymentTokenConfigFile(networkName)
 
+
+        ///////////// START DEPLOY OF NAME LABEL VALIDATOR ///////////////////
+        Utils.infoMsg("Deploying MetadataGenerator Contract")
+
+        let deployedMetadataGen = await deploy('MetadataGen', {
+            from: owner,
+            log: true
+        });
+
+        Utils.successMsg(`deployedMetadataGen Deloyed: ${deployedMetadataGen.address}`);
+
+        deployedContractsAddresses["metadataGen"] = deployedMetadataGen.address;
+        ///////////////// END DEPLOY NAME LABEL VALIDATOR ////////////////
+
+
+        ///////////// START DEPLOY OF NAME LABEL VALIDATOR ///////////////////
+        Utils.infoMsg("Deploying NameLabelValidator Contract")
+
+        let deployedNameLabelValidator = await deploy('LabelValidator', {
+            from: owner,
+            log: true
+        });
+
+        Utils.successMsg(`NameLabelValidator Deloyed: ${deployedNameLabelValidator.address}`);
+
+        // dont include it
+        ///deployedContractsAddresses["nameLabelValidator"] = deployedNameLabelValidator.address;
+        ///////////////// END DEPLOY NAME LABEL VALIDATOR ////////////////
+
+
         //console.log("paymentTokenConfig===>", paymentTokenConfig)
 
         /////////////// DEPLOYING PUBLIC RESOLVER & REGISTRAR ////////
-        Utils.infoMsg("Deploying TLDS BNS Public Registrar Contract")
+        Utils.infoMsg("Deploying TLDs Public Registrar Contract")
 
         let deployedtRegistrarContract = await deploy('PublicRegistrar', {
             from: owner,
@@ -65,6 +95,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                         owner, // signer
                         zeroAddress, // treasury address
                         paymentTokenConfig.defaultStablecoin, // default stable coin
+                        deployedNameLabelValidator.address
                     ]
                 }
             }
@@ -80,7 +111,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         ///////// END PUBLIC RESOLVER & REGISTRAR /////////
       
-        Utils.infoMsg("Deploying TLDS BNSRegistry Contract")
+        Utils.infoMsg("Deploying TLDS Registry Contract Files")
 
         //let bnsTLDParamArray = []
 
@@ -89,13 +120,15 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         let lastDeployedRegistry;
 
+        let tldsChainIds = {}
+
         for(let tldObj of TLDsArrayData){
 
             //console.log("tldObj====>", tldObj)
 
             Utils.infoMsg(`Deploying ${tldObj.name} ERC721Registry Contract`)
 
-            let deployedRegistryContract = await deploy('BNSRegistry', {
+            let deployedRegistryContract = await deploy('Registry', {
                 from: owner,
                 log: true,
         
@@ -109,7 +142,9 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                             tldObj.symbol,
                             tldObj.tldName,
                             tldObj.webHost,
-                            mintersArray
+                            mintersArray,
+                            deployedMetadataGen.address,
+                            deployedNameLabelValidator.address
                         ]
                     }
                 }
@@ -123,6 +158,8 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
             deployedTLDInfo[tldObj.tldName] = tldContractAddress;
 
             lastDeployedRegistry = deployedRegistryContract;
+
+            tldsChainIds[tldObj.tldName.toLowerCase()] = [chainId];
         }
 
         deployedContractsAddresses["registries"] = deployedTLDInfo;
@@ -159,6 +196,24 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         /////////// END //////
 
+        Utils.successMsg("Exporting tlds  info")
+
+        let tldsExportPaths = secretsConfig.tldsExportPaths || []
+
+        for(let tldInfoFile of tldsExportPaths){
+
+            await fsp.mkdir(path.dirname(tldInfoFile), {recursive: true})
+
+            let tldsData = {}
+
+            try { tldsData = require(tldInfoFile) } catch(e){ }
+
+            tldsData = _lodash.merge({},tldsData, tldsChainIds)
+
+            //lets save it back
+            await fsp.writeFile(tldInfoFile, JSON.stringify(tldsData, null, 2));
+        }
+
         //exporting contract info
         Utils.successMsg("Exporting contract info")
 
@@ -166,6 +221,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         for(let configDirPath of contractInfoExportPaths){
 
+            
             //lets create the path 
             await fsp.mkdir(configDirPath, {recursive: true})
 
@@ -199,15 +255,21 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         let abiExportsPathsArray = secretsConfig.abiExportPaths || []
 
         for(let exportPath of abiExportsPathsArray) {
+
+            let exportDir = `${exportPath}/${chainId}/`
             
-            await fsp.mkdir(exportPath, {recursive: true})
+            await fsp.mkdir(exportDir, {recursive: true})
             
             Utils.successMsg(`Exporting registrar.json to ${exportPath}/registrar.json`);
-            await fsp.writeFile(`${exportPath}/${chainId}/registrar.json`, JSON.stringify(deployedtRegistrarContract.abi, null, 2));
+            await fsp.writeFile(`${exportDir}/registrar.json`, JSON.stringify(deployedtRegistrarContract.abi, null, 2));
+
+            Utils.successMsg(`Exporting metadataGen.json to ${exportPath}/metadataGen.json`);
+            await fsp.writeFile(`${exportDir}/metadataGen.json`, JSON.stringify(deployedMetadataGen.abi, null, 2));
+
 
             if(lastDeployedRegistry != null){
                 Utils.successMsg(`Exporting registry.json to ${exportPath}/registry.json`);
-                await fsp.writeFile(`${exportPath}/${chainId}/registry.json`, JSON.stringify(lastDeployedRegistry.abi, null, 2));
+                await fsp.writeFile(`${exportDir}/registry.json`, JSON.stringify(lastDeployedRegistry.abi, null, 2));
             }
         }
 

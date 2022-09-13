@@ -1,16 +1,18 @@
 /** 
-* Binance Name Service
-* @website github.com/binance-name
-* @author Team BNS <hello@binance.name>
+* Blockchain Domains
+* @website github.com/bdomains
+* @author BDN Team <hello@bdomains.org>
 * @license SPDX-License-Identifier: MIT
 */ 
 pragma solidity ^0.8.0;
 
 import "./DataStore.sol";
 import "./utils/NameUtils.sol";
-import "./Defs.sol";
+import "./Defs.sol"; 
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 
-contract ContractBase is DataStore, NameUtils {
+
+abstract contract ContractBase is DataStore, NameUtils {
 
     function bytesToAddress(bytes memory b) internal pure returns(address payable a) {
         require(b.length == 20);
@@ -100,7 +102,7 @@ contract ContractBase is DataStore, NameUtils {
 
         bytes32 parentNode = getDomainNode(node);
 
-        return __INSTANCE.ownerOf(_records[parentNode].tokenId);
+        return IERC721Upgradeable(address(this)).ownerOf(_records[parentNode].tokenId);
     }
 
 

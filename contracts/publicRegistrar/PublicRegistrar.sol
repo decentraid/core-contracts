@@ -43,14 +43,15 @@ contract PublicRegistrar is
     function initialize(
         address requestSigner,
         address treasuryAddress_,
-        address defaultStableCoin_
+        address defaultStableCoin_,
+        address _labelValidatorAddr
     ) 
         public 
         initializer
     {   
 
-        require(defaultStableCoin_ != address(0), "BNS#initialize: defaultStableCoin_ cannot be a zero address");
-        //require(treasuryAddress_ != address(0), "BNS#initialize: treasuryAddress_ cannot be a zero address");
+        require(defaultStableCoin_ != address(0), "PubReg#initialize: defaultStableCoin_ cannot be a zero address");
+        //require(treasuryAddress_ != address(0), "PubReg#initialize: treasuryAddress_ cannot be a zero address");
 
         __Context_init_unchained();
         __Ownable_init_unchained();
@@ -68,6 +69,8 @@ contract PublicRegistrar is
         treasuryAddress         = treasuryAddress_;
 
         _priceSlippageToleranceRate = 50; // 0.5
+
+        _nameLabelValidator = ILabelValidator(_labelValidatorAddr);
     }
 
      /**
@@ -293,7 +296,7 @@ contract PublicRegistrar is
 
         bytes32 _node = getTLDNameHash(_domainExt);
 
-        require(registryInfo[_node] == address(0), "BNS#addTLD: TLD_ALREADY_EXISTS");
+        require(registryInfo[_node] == address(0), "PubReg#addTLD: TLD_ALREADY_EXISTS");
 
         registryInfo[_node] = _assetAddress;
         domainPrices[_node] = _domainPrices;
@@ -302,6 +305,7 @@ contract PublicRegistrar is
 
         emit AddTLD(_domainExt, _assetAddress, _node);
     } //end
+
 
     /**
      * @dev getTotalTLDs - get total tlds 
@@ -422,15 +426,15 @@ contract PublicRegistrar is
 
         validateRequestAuth(authInfo);
    
-        require(getRegistry(_tld) != address(0), "BNS#registerDomain: INVALID_TLD");
+        require(getRegistry(_tld) != address(0), "PublicRegistrar#registerDomain: INVALID_TLD");
 
-        IRegistry _iregistry = IRegistry(getRegistry(_tld));
+        //IRegistry _iregistry = IRegistry(getRegistry(_tld));
 
         //uint256 amountUSD = getPrice(_tld, _label);
 
         PaymentTokenDef memory _pTokenInfo = paymentTokens[paymentTokensIndexes[paymentToken]];
 
-        require(_pTokenInfo.tokenAddress != address(0), "BNS#registerDomain: INVALID_PAYMENT_TOKEN");
+        require(_pTokenInfo.tokenAddress != address(0), "PubReg#registerDomain: INVALID_PAYMENT_TOKEN");
 
         uint256 tokenAmount = PriceFeed.toTokenAmount(getPrice(_tld, _label), _pTokenInfo);
 
@@ -443,13 +447,11 @@ contract PublicRegistrar is
                 tokenAmount = (tokenAmount - priceSlippageToleranceAmt);
             }
 
-            require(msg.value >= tokenAmount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
+            require(msg.value >= tokenAmount, "PubReg#registerDomain: INSUFFICIENT_AMOUNT_VALUE");
 
         } else {
-
-            IERC20 _erc20 = IERC20(paymentToken);
-            require( _erc20.balanceOf(_msgSender()) >= tokenAmount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
-            require(IERC20(paymentToken).transferFrom(_msgSender(), address(this), tokenAmount), "BNSCore#AMOUNT_TRANSFER_FAILED");
+            require( IERC20(paymentToken).balanceOf(_msgSender()) >= tokenAmount, "PubReg#registerDomain: INSUFFICIENT_AMOUNT_VALUE");
+            require(IERC20(paymentToken).transferFrom(_msgSender(), address(this), tokenAmount), "PubReg#registerDomain: AMOUNT_TRANSFER_FAILED");
         }
 
         //send affiliate payment
@@ -466,7 +468,7 @@ contract PublicRegistrar is
         }
 
         // register the domain
-        (uint256 _tokenId, bytes32 _node) = _iregistry.addDomain(_msgSender(), _label, svgImgInfo);
+        (uint256 _tokenId, bytes32 _node) = IRegistry(getRegistry(_tld)).addDomain(_msgSender(), _label, svgImgInfo);
 
         // increment and assign +1
         uint256 _domainId = ++totalDomains;
@@ -598,12 +600,12 @@ contract PublicRegistrar is
         onlyOwner
     {
         if(_pTokenInfo.priceFeedSource == "chainlink"){
-            require(_pTokenInfo.priceFeedContract == address(0), "BNS#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED");
+            require(_pTokenInfo.priceFeedContract == address(0), "PubReg#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED");
         }
         
         require(
             !(_pTokenInfo.dexInfo.factory == address(0) || _pTokenInfo.dexInfo.router == address(0)), 
-            "BNS#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED"
+            "PubReg#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED"
         );
 
         address _tokenAddress = _pTokenInfo.tokenAddress;
@@ -651,7 +653,7 @@ contract PublicRegistrar is
         onlyOwner 
     {
         IERC20 _erc20 = IERC20(_assetAddress);
-        require(_erc20.balanceOf(address(this)) > 0, "BNS#withdrawToken: ZERO_BALANCE");
+        require(_erc20.balanceOf(address(this)) > 0, "PubReg#withdrawToken: ZERO_BALANCE");
         _erc20.transfer(_to, _erc20.balanceOf(address(this)));
     }
 
@@ -667,7 +669,7 @@ contract PublicRegistrar is
     {
 
         uint256 _bal = address(this).balance;
-        require(_bal > 0, "BNS#withdrawEthers: ZERO_BALANCE");
+        require(_bal > 0, "PubReg#withdrawEthers: ZERO_BALANCE");
 
         (bool success, ) = _to.call{ value: _bal }("");
         require(success, "TransferBase#transfer: NATIVE_TRANSFER_FAILED");

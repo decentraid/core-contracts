@@ -1,7 +1,7 @@
 /** 
-* Binance Name Service
-* @website github.com/binance-name
-* @author Team BNS <hello@binance.name>
+* Blockchain Domains
+* @website github.com/bdomains
+* @author BDN Team <hello@bdomains.org>
 * @license SPDX-License-Identifier: MIT
 */
 

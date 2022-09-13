@@ -23,11 +23,10 @@ import "../utils/NameUtils.sol";
 import "../ContractBase.sol";
 import "../resolvers/AddressResolver.sol";
 import "../resolvers/TextResolver.sol";
-import "../utils/NFTMetadata.sol";
 import "hardhat/console.sol";
 
 contract Registry is
-    ContractBase,
+    ContractBase, 
     Roles,
     ERC721Upgradeable,
     ERC721URIStorageUpgradeable,
@@ -36,8 +35,7 @@ contract Registry is
     ERC721EnumerableUpgradeable,
     ERC165StorageUpgradeable,
     AddressResolver,
-    TextResolver,
-    NFTMetadata
+    TextResolver
  {
 
     event RegisterDomain(uint256 tokenId, bytes32 nameHash);
@@ -62,13 +60,24 @@ contract Registry is
         string          memory  _symbol,
         string          memory  _tldName,
         string          memory  _webHost,
-        address[]       memory  _extraMinters
+        address[]       memory  _extraMinters,
+        address                 _metadataGenAddr,
+        address                 _labelValidatorAddr
     )
         public 
         initializer 
-        onlyValidLabel(_tldName)
     {
 
+        // meta data generator 
+        _metadataGenerator = IMetadataGen(_metadataGenAddr);
+
+        // set name label validator addr 
+        _nameLabelValidator = ILabelValidator(_labelValidatorAddr);
+        
+        // validate tld name
+        require(_nameLabelValidator.matches(_tldName), "Registry#initialize: INVALID_TLD_NAME");
+
+        
         // initailize the core components
         __ERC721_init(_name, _symbol);
         __ERC721Enumerable_init();
@@ -95,12 +104,12 @@ contract Registry is
             updatedAt:          block.timestamp
         });
         
-
+        
         // lets add more minters 
         for(uint256 i = 0; i < _extraMinters.length; i++) {
-            addMinter(_extraMinters[i]);
+            _setupRole(MINTER_ROLE, _extraMinters[i]);
         } //end loop
-
+        
     } //end  initialize
 
 
@@ -126,12 +135,12 @@ contract Registry is
 
 
     modifier tokenExists(uint256 tokenId) {
-        require(_exists(tokenId),"BNS#ERC721Registry: UNKNOWN_TOKEN_ID");
+        require(_exists(tokenId),"Registry#tokenExists: UNKNOWN_TOKEN_ID");
         _;
     }
 
     modifier onlyTokenOwner(uint256 tokenId) {
-        require(ownerOf(tokenId) == _msgSender(), "Registry: NOT_OWNER");
+        require(ownerOf(tokenId) == _msgSender(), "Registry#onlyTokenOwner: NOT_OWNER");
         _;
     }
     
@@ -207,7 +216,7 @@ contract Registry is
         returns(uint256 _tokenId, bytes32 _node) 
     {
 
-        require( !strMatches(_label, _registryInfo.label), "Registry#_mintDomain: LABEL_CANNOT_BE_TLD_NAME");
+        require( !strMatches(_label, _registryInfo.label), "Registry#_mintDomain: INVALID_LABEL");
 
         _tokenIdCounter.increment();
 
@@ -360,7 +369,6 @@ contract Registry is
      * reverseNode
      */
     function reverseNode(bytes32 _node) 
-        override
         public 
         view 
         returns(string memory)
@@ -390,6 +398,27 @@ contract Registry is
     }
 
 
+    /**
+     * @dev set meta dta generator contract
+     */
+    function setMetadaGenerator(address _addr)
+        public 
+        onlyAdmin
+    {
+        _metadataGenerator = IMetadataGen(_addr);
+    }
+
+    /**
+     * @dev set name label validator
+     * @param _addr the contract address
+     */
+     function setNameLabelValidator(address _addr)        
+        public 
+        onlyAdmin
+    {
+        _nameLabelValidator = ILabelValidator(_addr);
+    }
+
     //////////////////////////// Overrides Starts  //////////////////////////
 
     function _burn(uint256 tokenId)
@@ -409,7 +438,10 @@ contract Registry is
         override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
         returns (string memory)
     {
-        return getTokenURI(tokenId);
+        
+       bytes32 _node = _tokenIdToNodeMap[tokenId];
+
+       return _metadataGenerator.getTokenURI(reverseNode(_node), _svgImagesProps[_node]);
     }
     
     /**
@@ -461,7 +493,7 @@ contract Registry is
     function ownerOf(uint256 tokenId) 
         public 
         view
-        override(ERC721Upgradeable, IERC721Upgradeable)
+        override( ERC721Upgradeable, IERC721Upgradeable )
         returns 
         (address) 
     {

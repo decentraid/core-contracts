@@ -11,7 +11,7 @@ require("@nomiclabs/hardhat-ethers");
 
 require("@nomiclabs/hardhat-etherscan");
 
-require('hardhat-contract-sizer');
+require('hardhat-contract-sizer', { runOnCompile: true });
 
 require('hardhat-deploy');
 
@@ -38,6 +38,7 @@ module.exports = {
       forking: {
           url: `https://rpc.ankr.com/bsc_testnet_chapel`
       },
+      chainId: 1337
     },
     
     bsc_testnet: {

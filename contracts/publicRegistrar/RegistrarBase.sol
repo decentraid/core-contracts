@@ -6,16 +6,19 @@
 */ 
 pragma solidity ^0.8.0;
 
-import "../utils/NameUtils.sol";
+//import "../utils/NameUtils.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interface/IRegistry.sol";
 import "../priceFeed/PriceFeed.sol";
+import "../interface/ILabelValidator.sol";
 
 contract RegistrarBase is 
     Defs,
-    NameUtils,
     PriceFeed
 {
+
+    // label validator 
+    ILabelValidator internal _nameLabelValidator;
 
     ////////////// Rgistries ///////////////
     // node => registry address 
@@ -69,6 +72,27 @@ contract RegistrarBase is
     address public defaultStableCoin;
 
     uint256 _priceSlippageToleranceRate;
+
+    /**
+     * only valid label
+     */
+    modifier onlyValidLabel(string memory nameLabel) {
+        require(_nameLabelValidator.matches(nameLabel), "NameUtils#onlyValidLabel: INVALID_LABEL_PUNNYCODE_FORMAT");
+        _;
+    }
+
+    /**
+     *  @dev nameHash for registry TLD 
+     *  @param _tld string variable of the name label example bnb, cake ...
+     */
+    function getTLDNameHash(string memory _tld)
+        public 
+        pure 
+        returns (bytes32 _namehash) 
+    {  
+        _namehash = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        _namehash = keccak256(abi.encodePacked(_namehash, keccak256(abi.encodePacked(_tld))));
+    }
 
     /**
      * tld Exists 
