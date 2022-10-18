@@ -9,9 +9,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "../Defs.sol";
 import "./ChainLink.sol";
-import "./Uniswap.sol";
 
-contract PriceFeed is Defs, ChainLink, Uniswap {
+contract PriceFeed is Defs, ChainLink {
 
     using SafeMathUpgradeable for uint256;
 
@@ -31,13 +30,9 @@ contract PriceFeed is Defs, ChainLink, Uniswap {
 
         uint256 _rate;
 
-        if(_pTokenInfo.priceFeedSource == toBytes32("chainlink")) {
-            _rate = getChainLinkPrice(_pTokenInfo.priceFeedContract);
-        } else {
-            _rate = uniswapFetchTokenPrice(_pTokenInfo.dexInfo.pricePairToken);
-        }
+        _rate = getChainLinkPrice(_pTokenInfo.priceFeedContract).rate;
 
-        uint256 _price = _rate.mul(_amountUSDT);
+        uint256 _price = _rate.mul(_amountUSDT); 
 
         return _price;
     } 

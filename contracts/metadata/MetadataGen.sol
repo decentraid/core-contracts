@@ -16,14 +16,14 @@ contract MetadataGen is Defs {
 
     function getTokenURI(
         string memory _domain,
-        SvgImageProps memory _svgImgInfo
+        SvgProps memory _svgProps
     )
         public
         pure 
         returns (string memory) 
     {
 
-       string memory _image = getImage(_domain, _svgImgInfo);
+       string memory _image = getImage(_domain, _svgProps);
 
         bytes memory metadata = abi.encodePacked(
             '{',
@@ -43,12 +43,12 @@ contract MetadataGen is Defs {
     /**
      * @dev get the token uri image, automatically generated
      * @param _text, this is the domain name 
-     * @param _svgImgProps the svg image props
+     * @param _svgProps the svg image props
      * @return string an base64 svg image uri
      */
     function getImage(
         string memory _text,
-        SvgImageProps memory _svgImgProps 
+        SvgProps memory _svgProps 
     )
         public
         pure 
@@ -57,12 +57,12 @@ contract MetadataGen is Defs {
 
         bytes memory gColors = abi.encodePacked();
 
-        for(uint i = 0; i < _svgImgProps.gradientColors.length; i++){
+        for(uint i = 0; i < _svgProps.gColors.length; i++){
             gColors = abi.encodePacked(
                 gColors, 
                 '<stop',
-                    'offset="',     _svgImgProps.gradientColors[i].offset, '"',
-                    'stop-color="', _svgImgProps.gradientColors[i].color, '"',
+                    'offset="',     _svgProps.gColors[i][0], '"',
+                    'stop-color="', _svgProps.gColors[i][1], '"',
                 '/>'
             );
         }
@@ -81,7 +81,8 @@ contract MetadataGen is Defs {
             '<style>',
                 '.__bdomains_svg_text {',
                     'font: 22px bold Sans-Serif;',
-                    'fill: ', _svgImgProps.textColor ,';',
+                    'fill: #000000;',
+                    'text-opacity: 0.8;',
                     'text-anchor: middle;'
                     'dominant-baseline: middle',
                     'letter-spacing: 3px;',
@@ -97,18 +98,14 @@ contract MetadataGen is Defs {
             '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400">',
                 '<defs>',
                     '<linearGradient',
-                        'id="bdn-g"', 
-                        'gradientUnits="userSpaceOnUse"',
-                        'x1="',_svgImgProps.x1,'"',
-                        'y1="',_svgImgProps.y1,'"',
-                        'x2="',_svgImgProps.x2,'"',
-                        'y2="',_svgImgProps.y2,'"',
+                        'id="bdn-g"',
+
                     '>',
                         gColors,
                     '</linearGradient>',
-                    '<rect width="100%" height="100%" fill="url(#bdn-g)" />',
-                    svgTextData,
                 '</defs>',
+                '<rect width="100%" height="100%" fill="url(#bdn-g)" />',
+                svgTextData,
             '</svg>'
          );
 

@@ -7,14 +7,17 @@
 pragma solidity ^0.8.0;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "../Defs.sol";
 
-contract ChainLink  {
+contract ChainLink is Defs {
 
     function getChainLinkPrice(address _feedContract) 
         public 
         view 
-        returns (uint256)
+        returns (FeedInfo memory)
     {
+        AggregatorV3Interface _aggrv3 = AggregatorV3Interface(_feedContract);
+
         (
             //uint80 roundId,
             ,
@@ -23,8 +26,8 @@ contract ChainLink  {
             //uint256 startedAt,
             //uint256 updatedAt,
             //uint80 answeredInRound
-        )   =   AggregatorV3Interface(_feedContract).latestRoundData();
+        )   =   _aggrv3.latestRoundData();
 
-        return uint256(answer);
+        return FeedInfo({ rate: uint256(answer), decimals: _aggrv3.decimals() }); 
     }   
 }

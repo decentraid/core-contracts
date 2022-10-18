@@ -1,6 +1,19 @@
 [
   {
     "inputs": [],
+    "name": "_registry",
+    "outputs": [
+      {
+        "internalType": "contract IRegistry",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "affiliateSharePercent",
     "outputs": [
       {
@@ -95,45 +108,6 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "name": "domainPrices",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "one",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "two",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "three",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "four",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "fivePlus",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
@@ -157,6 +131,11 @@
         "type": "bytes32"
       },
       {
+        "internalType": "bytes32",
+        "name": "tld",
+        "type": "bytes32"
+      },
+      {
         "internalType": "address",
         "name": "userAddress",
         "type": "address"
@@ -176,9 +155,21 @@
     "name": "getChainLinkPrice",
     "outputs": [
       {
-        "internalType": "uint256",
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "rate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "decimals",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Defs.FeedInfo",
         "name": "",
-        "type": "uint256"
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -201,54 +192,6 @@
       }
     ],
     "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_factory",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_tokenA",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_tokenB",
-        "type": "address"
-      }
-    ],
-    "name": "getUniswapPairToken",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "pair",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_router",
-        "type": "address"
-      }
-    ],
-    "name": "getWETH",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -276,40 +219,13 @@
     "outputs": [
       {
         "internalType": "address",
-        "name": "assetAddress",
+        "name": "tokenAddress",
         "type": "address"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "priceFeedSource",
-        "type": "bytes32"
       },
       {
         "internalType": "address",
         "name": "priceFeedContract",
         "type": "address"
-      },
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "factory",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "router",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "pricePairToken",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct Defs.DexInfo",
-        "name": "dexInfo",
-        "type": "tuple"
       },
       {
         "internalType": "bool",
@@ -352,44 +268,6 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "registryIds",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "name": "registryInfo",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "string",
         "name": "source",
         "type": "string"
@@ -417,40 +295,13 @@
         "components": [
           {
             "internalType": "address",
-            "name": "assetAddress",
+            "name": "tokenAddress",
             "type": "address"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "priceFeedSource",
-            "type": "bytes32"
           },
           {
             "internalType": "address",
             "name": "priceFeedContract",
             "type": "address"
-          },
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "factory",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "router",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "pricePairToken",
-                "type": "address"
-              }
-            ],
-            "internalType": "struct Defs.DexInfo",
-            "name": "dexInfo",
-            "type": "tuple"
           },
           {
             "internalType": "bool",
@@ -518,25 +369,6 @@
         "internalType": "address",
         "name": "",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_pairAddress",
-        "type": "address"
-      }
-    ],
-    "name": "uniswapFetchTokenPrice",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",

@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interface/IRegistry.sol";
 import "../priceFeed/PriceFeed.sol";
 import "../interface/ILabelValidator.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 contract RegistrarBase is 
     Defs,
@@ -21,17 +22,12 @@ contract RegistrarBase is
     ILabelValidator internal _nameLabelValidator;
 
     ////////////// Rgistries ///////////////
-    // node => registry address 
+    IRegistry public _registry;
 
-    mapping(bytes32  => address) public registryInfo;
-    bytes32[] public registryIds;
-
-    mapping(bytes32 => DomainPrices) public domainPrices;
-    
-    //// Payment Tokens //////
+    // tld => registry 
+    //mapping(bytes32 => address) public registries;
 
     // total payment tokens 
-   
     uint256 public totalPaymentTokens;
 
     mapping(uint256 => PaymentTokenDef) public paymentTokens;
@@ -55,7 +51,7 @@ contract RegistrarBase is
     ////////  End Registered Domains //// 
 
     // native asset Address 
-    address public nativeAssetAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address public nativeAssetAddress;
 
     // request signer 
     address _signer;
@@ -97,10 +93,13 @@ contract RegistrarBase is
     /**
      * tld Exists 
      */
-    modifier tldExists(string memory _tld) {
-        require(registryInfo[getTLDNameHash(_tld)] != address(0), "BNS#tldExists: UNKNOWN_TLD");
+    modifier TLDExists(string memory _tld) {
+        require(address(_registry) != address(0), "Registrar#TLDExists: REGISTRY_NOT_SET");
+        require(_registry.getTLD(getTLDNameHash(_tld)).createdAt > 0, "Registrar#TLDExists: UNKNOWN_TLD");
         _;
     }
 
     
+   
+
 }

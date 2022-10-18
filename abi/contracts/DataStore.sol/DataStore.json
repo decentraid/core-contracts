@@ -1,7 +1,121 @@
 [
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "_tlds",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "string",
+        "name": "label",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "tldType",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "namehash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "webUrl",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "metadataUri",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minLen",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxLen",
+        "type": "uint256"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "_1char",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_2chars",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_3chars",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_4chars",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "_5pchars",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Defs.DomainPrices",
+        "name": "prices",
+        "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "createdAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "updatedAt",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
-    "name": "MAX_LABEL_LENGTH",
+    "name": "totalTLDs",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalTokenIds",
     "outputs": [
       {
         "internalType": "uint256",

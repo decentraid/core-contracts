@@ -8,20 +8,24 @@ pragma solidity ^0.8.0;
 
 import "./ResolverBase.sol";
 
-abstract contract AddressResolver is ResolverBase {
+abstract contract AddressResolver is ERC165StorageUpgradeable, ResolverBase {
 
     event AddrChanged(bytes32 indexed node, address a);
     event AddressChanged(bytes32 indexed node, uint coinType, bytes newAddress);
 
-    bytes4 constant private ADDR_INTERFACE_ID   = 0x3b3b57de;
-    bytes4 constant private ADDRESS_INTERFACE_ID = 0xf1cb7e06;
-    uint constant private   ASSET_TYPE_ETH = 60;
+    uint private   ASSET_TYPE_ETH;
 
     /**
      * initialize address resolver
      */
     function __AddressResolver_init() virtual internal initializer {
-        __ResolverBase_init();
+
+         __ERC165Storage_init_unchained();
+
+        bytes4  ADDR_INTERFACE_ID   = 0x3b3b57de;
+        bytes4  ADDRESS_INTERFACE_ID = 0xf1cb7e06;
+        ASSET_TYPE_ETH = 60;
+
         _registerInterface(ADDR_INTERFACE_ID);
         _registerInterface(ADDRESS_INTERFACE_ID);
     }

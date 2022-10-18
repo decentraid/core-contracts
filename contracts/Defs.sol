@@ -9,6 +9,9 @@ pragma solidity ^0.8.0;
 
 contract Defs {
 
+    bytes32  TLD_TYPE_DOMAIN;
+    bytes32  TLD_TYPE_SOULBOUND;
+
     enum SortOrder {
         ASCENDING_ORDER,
         DESCENDING_ORDER
@@ -17,42 +20,50 @@ contract Defs {
     enum NodeType  {
         DOMAIN,
         SUBDOMAIN,
-        REGISTRY
+        TLD
     }
 
-    struct DexInfo {
-        address factory;
-        address router;
-        address pricePairToken;
+    struct FeedInfo {
+        uint256  rate;
+        uint     decimals; 
     }
 
     struct PaymentTokenDef {
         address tokenAddress;
-        bytes32 priceFeedSource; // chainlink or pancakeswap
-        address priceFeedContract;
-        DexInfo dexInfo;
+        address priceFeedContract; // chainlink price feed
         bool    enabled;
         uint256 addedOn;
         uint256 updatedOn; 
     }
 
-    // by character length
-    struct DomainPrices {
-        uint256  one;
-        uint256  two;
-        uint256  three;
-        uint256  four;
-        uint256  fivePlus;
+    struct PaymentTokenInfo {
+        string          name;
+        string          symbol;
+        uint            decimals;
+        PaymentTokenDef paymentToken;
+        FeedInfo        feedInfo;
     }
 
-    struct RegistryInfo {
+    // by character length
+    struct DomainPrices {
+        uint256  _1char;
+        uint256  _2chars;
+        uint256  _3chars;
+        uint256  _4chars;
+        uint256  _5pchars;
+    }
+
+    struct TLDInfo {
+        uint256         id;
         string          label;
+        string          name;
+        bytes32         tldType;
         bytes32         namehash;
-        address         assetAddress;
-        string          webHost;
-        uint            minDomainLength;
-        uint            maxDomainLength;
-       // DomainPrices    domainPrices;     
+        string          webUrl;
+        string          metadataUri;
+        uint            minLen;
+        uint            maxLen;
+        DomainPrices    prices;     
         uint256         createdAt;
         uint256         updatedAt;
     }
@@ -64,6 +75,7 @@ contract Defs {
         bytes32     parentNode; 
         NodeType    nodeType;
         uint256     tokenId;
+        uint256     tldId;
         uint256     createdAt;
         uint256     updatedAt;  
     }
@@ -81,21 +93,22 @@ contract Defs {
         address   assetAddress;
         uint256   tokenId;
         bytes32   node;
+        bytes32   tld;
         address   userAddress;
     }
 
-    struct GradientColor {
-        string offset;
-        string color;
+    struct SvgProps {
+        string cords;
+        string[][] gColors;
+    }
+    
+
+    struct PriceInfoDef {
+        uint256 price;
+        address tokenAddress; 
+        string  name;
+        string  symbol; 
+        uint256 decimals;
     }
 
-    struct SvgImageProps {
-        string          x1;
-        string          y1;
-        string          x2;
-        string          y2;
-        GradientColor[] gradientColors;
-        string          textColor;
-    }
- 
 }

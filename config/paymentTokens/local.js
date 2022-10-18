@@ -1,38 +1,28 @@
 const Utils = require("../../Classes/Utils")
 const path = require("path")
+const ethers = require('ethers')
+
+const dexBytes32 = ethers.utils.formatBytes32String("dex")
 
 module.exports = async (network) => {
 
-    let usdtAddress = (await getAssetAddress(network, "UsdcToken"));
+    //(await getAssetAddress(network, "UsdcToken"));
+    let usdcAddress = "0x07865c6e87b9f70255377e024ace6630c1eaa37f" // usdc goerli
 
     return {
-        defaultStablecoin: usdtAddress,
+        defaultStablecoin: usdcAddress,
         paymentTokens: [
-            {
-                symbol: "eth",
-                tokenAddress: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE",
-                priceFeedSource: "dex",
-                priceFeedContract: "0x0000000000000000000000000000000000000000", //eth-usd
-                dexInfo: {
-                    factory: "0x6725F303b657a9451d8BA641348b6761A6CC7a17",
-                    router: "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
-                    pricePairToken: "0x0000000000000000000000000000000000000000"
-                },
+            {   
+                tokenAddress: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", //native token
+                priceFeedContract: "0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e",// eth-usd goerli feed
                 enabled: true,
                 addedOn: Date.now(),
                 updatedOn:  Date.now()
             },
 
-            {
-                symbol: "usdc",
-                tokenAddress: usdtAddress,
-                priceFeedSource: "dex",
-                priceFeedContract: "0x0000000000000000000000000000000000000000", //usdc-usd
-                dexInfo: {
-                    factory: "0x6725F303b657a9451d8BA641348b6761A6CC7a17",
-                    router: "0xD99D1c33F9fC3444f8101754aBC46c52416550D1",
-                    pricePairToken: "0x0000000000000000000000000000000000000000"
-                },
+            {   
+                tokenAddress: usdcAddress,
+                priceFeedContract: "0xAb5c49580294Aff77670F839ea425f5b78ab3Ae7", //usdc-usd
                 enabled: true,
                 addedOn: Date.now(),
                 updatedOn:  Date.now()

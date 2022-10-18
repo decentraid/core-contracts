@@ -6,23 +6,67 @@
 */
 pragma solidity ^0.8.0;
 
-import "../ContractBase.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
+//import "../ContractBase.sol";
+import "../interface/IRegistry.sol";
+import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
 
-abstract contract ResolverBase is Initializable, ContractBase, ERC165StorageUpgradeable {
+abstract contract ResolverBase {
 
-    bytes4 private constant INTERFACE_META_ID = 0x01ffc9a7;
+    IRegistry public _registry;
 
-    function isAuthorised(bytes32 node) internal virtual view returns(bool);
+    // resolver addresses
+    // node => address
+    mapping(bytes32 => mapping( uint => bytes)) internal _addressRecords;
+
+    // node => key => value
+    mapping(bytes32 => mapping(string => string)) internal _textRecords;
+
+     /**
+     * @dev is authourized
+     */
+    function isAuthorised(bytes32 node) internal  view returns(bool){
+
+        require(address(_registry) != address(0), "Resolver#ResolverBase: registry address not set");
+        
+        address _owner = _registry.ownerOf(_registry.getRecord(node).tokenId);
+
+        if(_owner == address(0)) return false;
+
+        if(_owner == msg.sender || _registry.controller(node) == msg.sender) return true;
+
+        return false;
+    }
+
 
     modifier onlyAuthorized(bytes32 node) {
-        require(isAuthorised(node), "ResolverBase: NOT_AUTHORISED");
+        require(isAuthorised(node), "Resolver#ResolverBase: NOT_AUTHORISED");
         _;
     }
 
-    function __ResolverBase_init() internal initializer {
-         __ERC165Storage_init_unchained();
-        _registerInterface(INTERFACE_META_ID);
+    /**
+    * @dev compare tw strings 
+    * @param a the first str 
+    * @param b the second str
+    */   
+    function strMatches(string memory a, string memory b) public pure returns (bool) {
+        return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
     }
+
+
+    function bytesToAddress(bytes memory b) internal pure returns(address payable a) {
+        require(b.length == 20);
+        assembly {
+            a := div(mload(add(b, 32)), exp(256, 12))
+        }
+    }
+
+    function addressToBytes(address a) internal pure returns(bytes memory b) {
+        b = new bytes(20);
+        assembly {
+            mstore(add(b, 32), mul(a, exp(256, 12)))
+        }
+    }
+
 }

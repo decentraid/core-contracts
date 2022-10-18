@@ -13,17 +13,16 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721RoyaltyUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+//import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
+//import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+//import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 import "../Defs.sol";
 import "../roles/Roles.sol";
 import "../utils/NameUtils.sol";
 import "../ContractBase.sol";
-import "../resolvers/AddressResolver.sol";
-import "../resolvers/TextResolver.sol";
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 contract Registry is
     ContractBase, 
@@ -31,52 +30,42 @@ contract Registry is
     ERC721Upgradeable,
     ERC721URIStorageUpgradeable,
     ERC721RoyaltyUpgradeable,
-    ERC721BurnableUpgradeable,
     ERC721EnumerableUpgradeable,
     ERC165StorageUpgradeable,
-    AddressResolver,
-    TextResolver
+    MulticallUpgradeable
  {
 
     event RegisterDomain(uint256 tokenId, bytes32 nameHash);
-    event SetPrices();
-    event MintDomain(uint256 _tokenId, address _to);
-    event MintSubdomain(uint256 _tokenId, address _to);
+    event MintDomain(uint256 tokenId, address to);
+    event MintSubdomain(uint256 tokenId, address to);
+    event AddTLD(uint256 id);
+    event UpdateTLD(uint256 id);
+    event SetCollectionUri(string uri);
+    event SetController(bytes32 node, address indexed account);
 
-    
-    using CountersUpgradeable for CountersUpgradeable.Counter;
-    using SafeMathUpgradeable for uint256;
-
-    CountersUpgradeable.Counter private _tokenIdCounter;
-
-    // domain prices data 
-    DomainPrices  _domainPrices;
 
     /**
      * initialize the contract
      */
     function initialize(
-        string          memory  _name,
-        string          memory  _symbol,
-        string          memory  _tldName,
-        string          memory  _webHost,
-        address[]       memory  _extraMinters,
-        address                 _metadataGenAddr,
-        address                 _labelValidatorAddr
+        string     memory  _name,
+        string     memory  _symbol,
+        address[]  memory  _extraMinters,
+        address            _metadataGenAddr,
+        address            _labelValidatorAddr
     )
         public 
         initializer 
     {
+
+        TLD_TYPE_DOMAIN     = keccak256(abi.encodePacked("TLD_TYPE_DOMAIN"));
+        TLD_TYPE_SOULBOUND  = keccak256(abi.encodePacked("TLD_TYPE_SOULBOUND"));
 
         // meta data generator 
         _metadataGenerator = IMetadataGen(_metadataGenAddr);
 
         // set name label validator addr 
         _nameLabelValidator = ILabelValidator(_labelValidatorAddr);
-        
-        // validate tld name
-        require(_nameLabelValidator.matches(_tldName), "Registry#initialize: INVALID_TLD_NAME");
-
         
         // initailize the core components
         __ERC721_init(_name, _symbol);
@@ -87,24 +76,6 @@ contract Registry is
         // initialize roles
         __Roles_init();
 
-        //init address resolver 
-        __AddressResolver_init();
-
-        __TextResolver_init();
-
-    
-        _registryInfo = RegistryInfo({
-            label:              _tldName,
-            namehash:           getTLDNameHash(_tldName),
-            assetAddress:       address(this),
-            webHost:            _webHost,
-            minDomainLength:    2,
-            maxDomainLength:    0, // 0 means no limit
-            createdAt:          block.timestamp,
-            updatedAt:          block.timestamp
-        });
-        
-        
         // lets add more minters 
         for(uint256 i = 0; i < _extraMinters.length; i++) {
             _setupRole(MINTER_ROLE, _extraMinters[i]);
@@ -112,18 +83,134 @@ contract Registry is
         
     } //end  initialize
 
+    /**
+     * @dev add tld
+     * @param name the full text tld name
+     * @param tld the domain extension in lower case
+     * @param webUrl the domain or web url for the tld example: cake.page
+     * @param metadataUri the metadata uri for the tld (ipsfs, arweave or ...)
+     * @param minLen the minimum domain length 
+     * @param maxLen the maximum domain length
+     * @param prices the domain prices 
+     */
+    function addTLD(
+        string memory name,
+        string memory tld,
+        bytes32       tldType,
+        string memory webUrl,
+        string memory metadataUri,
+        uint          minLen,
+        uint          maxLen,
+        DomainPrices memory prices
+    )
+        public 
+        onlyAdmin
+        returns (uint256)
+    {
+        require(_nameLabelValidator.matches(tld), "Registry: INVALID_TLD_NAME");
+
+        require(tldType == TLD_TYPE_DOMAIN || tldType == TLD_TYPE_SOULBOUND, "Registry: UNKNOWN_TLD_TYPE");
+        
+        bytes32 tldHash = getTLDNameHash(tld);
+
+        require(_tlds[_tldsIds[tldHash]].createdAt == 0, "Registry: TLD_EXISTS");
+
+        uint256 _id = ++totalTLDs;
+
+        TLDInfo memory tldInfo = TLDInfo(
+            _id,
+            name,
+            tld,      //label
+            tldType,
+            tldHash, //nameHash
+            webUrl,
+            metadataUri,
+            minLen,
+            maxLen,
+            prices, 
+            block.timestamp,
+            block.timestamp
+        );
+
+        _tlds[_id] = tldInfo;
+        _tldsIds[tldHash] = _id;
+
+        emit AddTLD(_id);
+
+        return _id;
+    }
 
     /**
-     * @dev registryInfo sends the registry info
-     * @return RegistryInfo
+     * @dev update tld
+     * @param id the tld id
+     * @param name the full text tld name
+     * @param webUrl the domain or web url for the tld example: cake.page
+     * @param metadataUri the metadata uri for the tld (ipsfs, arweave or ...)
+     * @param minLen the minimum domain length 
+     * @param maxLen the maximum domain length
+     * @param prices the domain prices 
      */
-    function getRegistryInfo() 
+    function updateTLD(
+        uint256 id,
+        string memory name,
+        string memory webUrl,
+        string memory metadataUri,
+        uint          minLen,
+        uint          maxLen,
+        DomainPrices memory prices
+    )
+        public 
+        onlyAdmin
+    {   
+        
+        require(_tlds[id].createdAt > 0, "Registry#updateTLD: TLD_NOT_FOUND");
+
+        _tlds[id].label = name;
+        _tlds[id].webUrl = webUrl;
+        _tlds[id].metadataUri = metadataUri;
+        _tlds[id].minLen = minLen;
+        _tlds[id].maxLen = maxLen;
+        _tlds[id].prices = prices;
+        _tlds[id].updatedAt = block.timestamp;
+
+        emit UpdateTLD(id);
+    }
+
+    /**
+     * get tld info by hash
+     */
+    function getTLD(bytes32 node)     
         public 
         view 
-        returns(RegistryInfo memory) 
-    {
-        return _registryInfo;
+        returns(TLDInfo memory) 
+    {  
+        return _tlds[_tldsIds[node]];
     }
+
+    /**
+     * get Tld by id
+     */
+    function getTLDById(uint256 _id)     
+        public 
+        view 
+        returns(TLDInfo memory) 
+    {  
+        return _tlds[_id];
+    }
+
+    /**
+     * @dev get all tlds
+     */
+    function getTLDs()     
+        public 
+        view 
+        returns(TLDInfo[] memory _tldsArray) 
+    {  
+        for(uint256 i=0; i <= totalTLDs; i++){
+            _tldsArray[i] = _tlds[i];
+        }
+    }
+
 
     /**
      * @dev if token exists 
@@ -135,80 +222,78 @@ contract Registry is
 
 
     modifier tokenExists(uint256 tokenId) {
-        require(_exists(tokenId),"Registry#tokenExists: UNKNOWN_TOKEN_ID");
+        require(_exists(tokenId),"Registry: UNKNOWN_TOKEN_ID");
         _;
     }
 
     modifier onlyTokenOwner(uint256 tokenId) {
-        require(ownerOf(tokenId) == _msgSender(), "Registry#onlyTokenOwner: NOT_OWNER");
+        require(ownerOf(tokenId) == _msgSender(), "Registry: NOT_OWNER");
         _;
     }
     
     /**
      * @dev getRecord get the record 
-     * @param _node the node to fetch the record
+     * @param node the node to fetch the record
      */
-    function getRecord(bytes32 _node)  
+    function getRecord(bytes32 node)  
         public 
         view 
         returns(Record memory)
     {
-        
-        //first lets check if the node is a tld, if yes, we send it
-        require(_registryInfo.namehash != _node, "Registry#getRecord: REGISTRY_NODE_PROVIDED");
-
-        return _records[_node];
+        return _records[_recordsNodeToId[node]];
     }
 
     /**
-     * @dev getRecordByTokenId
+     * @dev get record by token id
+     * @param _tokenId the id to fetch the record
      */
-    function getRecord(uint256 _tokenId)  
+    function getRecordById(uint256 _tokenId)  
         public 
         view 
-        tokenExists(_tokenId)
         returns(Record memory)
     {
-        return getRecord(_tokenIdToNodeMap[_tokenId]);
+        return _records[_tokenId];
     }
 
     /**
-     * override isAuthorized
+     * @dev get total records by parent
+     * @param _node the  node to count the child records
      */
-    function isAuthorised(bytes32 node) internal override view returns(bool){
-        
-        address owner = ownerOf(_records[node].tokenId);
-
-        if(owner == address(0)) return false;
-
-        if(owner == _msgSender()) return true;
-
-        return this.isApprovedForAll(owner, _msgSender());
-    }
-
-    /**
-     * @dev setDomainPrices 
-     * @param domainPrices_ the domain prices object
-     */
-    function setPrices(DomainPrices memory domainPrices_) 
-        public
-        onlyAdmin
+    function getTotalRecordsByParent(bytes32 _node)
+        public 
+        view 
+        returns(uint256)
     {
-        _domainPrices = domainPrices_;
-        emit SetPrices();
+        return _recordsByParent[_node].length;
     }
 
-  
+
+    /**
+     * @dev get total records by parent
+     * @param _node the  node to count the child records
+     */
+    function getRecordByParentIndex(
+        bytes32  _node,
+        uint256  _index
+    )
+        public 
+        view 
+        returns(Record memory)
+    {
+        return _records[_recordsByParent[_node][_index]];
+    }
+   
     /**
      * @dev mint a token
      * @param _to the address to mint to
      * @param _label the name of the domain
-     * @param _svgImgProps the properties used for generating svg for imageUri
+     * @param _svgProps the properties used for generating svg for imageUri
      */
     function _mintDomain(
-        address _to,
-        string   calldata _label,
-        SvgImageProps  memory  _svgImgProps
+        address             _to,
+        string    calldata  _label,
+        string    calldata  _tld,
+        SvgProps  memory    _svgProps
     ) 
         private 
         onlyValidLabel(_label)
@@ -216,15 +301,16 @@ contract Registry is
         returns(uint256 _tokenId, bytes32 _node) 
     {
 
-        require( !strMatches(_label, _registryInfo.label), "Registry#_mintDomain: INVALID_LABEL");
+        TLDInfo memory _tldInfo = getTLD(getTLDNameHash(_tld));
 
-        _tokenIdCounter.increment();
+        require(_tldInfo.createdAt > 0, "Registry: INVALID_TLD");
+        require(!strMatches(_label, _tld), "Registry: INVALID_LABEL");
 
-        _tokenId = _tokenIdCounter.current();
+        _tokenId = ++totalTokenIds;
         
         _mint(_to, _tokenId);
 
-        uint256 minLabelLength = _registryInfo.minDomainLength;
+        uint256 minLabelLength = _tldInfo.minLen;
 
         if(isAdmin(_msgSender())){
             minLabelLength = 1;
@@ -234,67 +320,75 @@ contract Registry is
         //lets now create our record 
         require(
             bytes(_label).length >= minLabelLength, 
-            string(abi.encodePacked("Registry#_mintDomain: LABEL_MUST_EXCEED_", _registryInfo.minDomainLength, "_CHARACTERS"))
+            string(abi.encodePacked("Registry#: LABEL_MUST_EXCEED_", _tldInfo.minLen, "_CHARACTERS"))
         );
 
-
         //lets get the domain hash
-        _node = nameHash(_label, _registryInfo.namehash);
+        _node = nameHash(_label, _tldInfo.namehash);
 
         // lets check if the domainHash exists
-        require(_records[_node].tokenId == 0, "Registry#_mintDomain: DOMAIN_TAKEN");
+        require(getRecord(_node).createdAt == 0, "Registry: DOMAIN_TAKEN");
 
-        _records[_node] = Record({
-            label:              _label,
-            namehash:           _node,
-            parentNode:         _registryInfo.namehash,
-            primaryNode:        _registryInfo.namehash,
-            nodeType:           NodeType.DOMAIN,
-            tokenId:            _tokenId,
-            createdAt:          block.timestamp,
-            updatedAt:          block.timestamp
-        }); 
 
+        _records[_tokenId] = Record(
+            _label,
+            _node, //namehash
+            bytes32(""), //primaryNode
+            _tldInfo.namehash, //parentNode
+            NodeType.DOMAIN, // nodeType
+            _tokenId, //tokenId
+            _tldInfo.id, //tldID
+            block.timestamp, //createdAt
+            block.timestamp //updatedAt
+        ); 
 
         // lets create a reverse token id 
-        _tokenIdToNodeMap[_tokenId] = _node;
-        _svgImagesProps[_node] = _svgImgProps;
+        _recordsNodeToId[_node] = _tokenId;
+
+        // parentNode ids 
+        _recordsByParent[_tldInfo.namehash].push(_tokenId);
+
+        _svgImagesProps[_node] = _svgProps;
 
         emit MintDomain(_tokenId, _to);
     }
 
-
-    function addDomain(
+    /**
+     * mint a domain
+     */
+    function mintDomain(
         address     _to,
-        string      calldata _label,
-        SvgImageProps  memory  _svgImgProps
+        string      calldata       _label,
+        string     calldata        _tld,
+        SvgProps    memory         _svgProps
     ) 
         public 
         onlyValidLabel(_label)
         onlyMinter
         returns(uint256 _tokenId, bytes32 _node) 
     {
-        return _mintDomain(_to, _label, _svgImgProps);
+        return _mintDomain(_to, _label, _tld, _svgProps);
     }
 
     /**
      * @dev register a subDomain
      * @param _label the name of the domain
      * @param _parentNode the parent node to create the subdomain from
+     * @param _svgProps props for svg image 
      */
     function _mintSubdomain(
-        string   calldata _label,
-        bytes32           _parentNode
+        string   calldata   _label,
+        bytes32             _parentNode,
+        SvgProps  memory    _svgProps
     ) 
         private 
         onlyValidLabel(_label)
-        onlyAuthorized(_parentNode)
         returns(uint256 _tokenId, bytes32 _node) 
     {
 
-        Record memory _parentRecord = _records[_parentNode];
+        Record memory _parentRecord = getRecord(_parentNode);
 
-        require(_parentRecord.createdAt > 0, "Registry#_mintSubdomain: PARENT_NODE_NOT_FOUND");
+        require(_parentRecord.createdAt > 0, "Registry#_mintSubdomain: PARENT_NOT_FOUND");
 
         bytes32 _primaryNode;
         Record memory _primaryRecord;
@@ -304,12 +398,10 @@ contract Registry is
              _primaryRecord = _parentRecord;
         } else {
             _primaryNode = _parentRecord.primaryNode;
-            _primaryRecord = _records[_primaryNode];
+            _primaryRecord = getRecord(_primaryNode);
         }
 
-        _tokenIdCounter.increment();
-
-        _tokenId = _tokenIdCounter.current();
+        _tokenId = ++totalTokenIds;
         
         address _to = ownerOf(_primaryRecord.tokenId);
 
@@ -318,19 +410,23 @@ contract Registry is
         //lets get the subdomain hash
         _node = nameHash(_label, _parentNode);
 
-        _records[_node] = Record({
-            label:              _label,
-            namehash:           _node,
-            parentNode:         _parentNode,
-            primaryNode:        _primaryNode,
-            nodeType:           NodeType.SUBDOMAIN,
-            tokenId:            _tokenId,
-            createdAt:          block.timestamp,
-            updatedAt:          block.timestamp
-        });
+        _records[_tokenId] = Record(
+            _label,
+            _node, //namehash
+            _parentNode, //primaryNode
+            _primaryNode, //parentNode
+            NodeType.SUBDOMAIN, // nodeType
+            _tokenId, //tokenId
+            _parentRecord.tldId, //tldID
+            block.timestamp, //createdAt
+            block.timestamp //updatedAt
+        ); 
     
         // lets create a reverse token id 
-        _tokenIdToNodeMap[_tokenId] = _node;
+        _recordsNodeToId[_node] = _tokenId;
+        _recordsByParent[_parentNode].push(_tokenId);
+
+        _svgImagesProps[_node] = _svgProps;
 
         emit MintSubdomain(_tokenId, _to);
     }
@@ -340,63 +436,87 @@ contract Registry is
      * @param _label the name of the domain
      * @param _parentNode the parent node to create the subdomain from
      */
-    function addSubdomain(
-        string   calldata _label,
-        bytes32           _parentNode
+    function mintSubdomain(
+        string   calldata   _label,
+        bytes32             _parentNode,
+        SvgProps  memory    _svgProps
     ) 
-        private 
+        public 
         onlyValidLabel(_label)
-        onlyAuthorized(_parentNode)
-        returns(uint256 _tokenId, bytes32 _domainHash) 
+        returns(uint256, bytes32) 
     {
-        return _mintSubdomain(_label, _parentNode);
-
+        require(ownerOf(getRecord(_parentNode).tokenId) == _msgSender(), "Registry#mintSubdomain: NOT_PARENT_OWNER");
+        return _mintSubdomain(_label, _parentNode, _svgProps);
     }
+
 
     /**
-     * @dev get domain from token Id 
-     * @param _tokenId the token id
-     */
-    function getDomain(uint256 _tokenId) 
-        public 
+     * getPrimaryNodeInfo
+     *
+    function primaryNodeInfo(bytes32 node)
+        public
         view 
-        returns(string memory)
+        returns (Record memory)
     {
-        return reverseNode(_tokenIdToNodeMap[_tokenId]);
-    }
+        if(getRecord(node).nodeType == NodeType.DOMAIN){
+            return getRecord(node);
+        } else {
+            return getRecord(getRecord(node).primaryNode);
+        } 
+    }*/
 
     /**
      * reverseNode
      */
-    function reverseNode(bytes32 _node) 
+    function reverseNode(bytes32 node) 
         public 
         view 
         returns(string memory)
     {
 
-        if(_node ==  _registryInfo.namehash){
-            return _registryInfo.label;
+        if(getTLD(node).createdAt > 0){
+            return getTLD(node).label;
         }
 
         bytes memory _result = abi.encodePacked("");
 
         while(true){
             
-            Record memory _record = getRecord(_node);
+            Record memory _record = getRecord(node);
 
             _result =  abi.encodePacked(_result,".");
 
-            if(_record.parentNode == _registryInfo.namehash){
-                _result =  abi.encodePacked(_result,_registryInfo.label);
+            if(getTLD(_record.parentNode).createdAt > 0 ){
+                _result =  abi.encodePacked(_result, getTLD(_record.parentNode).label);
                 break;
             } else {
-                _node = _record.parentNode;
+                node = _record.parentNode;
             }
         }
 
         return string(_result);
     }
 
+    /**
+     * @dev returns the resolver 
+     * @param node to return the resolver
+     * @return address of the resolver 
+     */
+    function resolver(bytes32 node) public virtual view returns (IResolver) {
+        return _resolver;
+    }
+
+    /**
+     * @dev set resolver
+     * @param _addr resolver address
+     */
+    function setResolver(address _addr)
+        public 
+        onlyAdmin
+    {
+        require(_addr != address(0), "Registry#setResolver: INVALID_ADDRESS");
+        _resolver = IResolver(_addr);
+    }
 
     /**
      * @dev set meta dta generator contract
@@ -419,6 +539,55 @@ contract Registry is
         _nameLabelValidator = ILabelValidator(_addr);
     }
 
+    /**
+     * @dev get the collection uri
+     */
+    function collectionUri() 
+        external 
+        view 
+        returns (string memory)
+    {
+        return _collectionUri;
+    }
+
+    /**
+     * @dev set collection Uri
+     */
+    function setCollectionUri(string memory uri) 
+        public
+        onlyAdmin
+    {
+        _collectionUri = uri;
+        emit SetCollectionUri(uri);
+    }
+
+
+    /**
+     * @dev get controller using node
+     * @param node the bytes32 node of a domain
+     */
+    function controller(bytes32 node) 
+        public 
+        view 
+        returns(address)
+    {
+        return _controllers[node]; 
+    }
+
+
+    /**
+     * @dev or remove controller
+     * @param _node the namehash of the domain
+     */
+    function setController(bytes32 _node, address account)
+        public
+        tokenExists(getRecord(_node).tokenId)
+        onlyTokenOwner(getRecord(_node).tokenId)
+    {
+        _controllers[_node] = account;      
+        emit SetController(_node, account);
+    }
+
     //////////////////////////// Overrides Starts  //////////////////////////
 
     function _burn(uint256 tokenId)
@@ -428,10 +597,11 @@ contract Registry is
             ERC721URIStorageUpgradeable,
             ERC721RoyaltyUpgradeable
         )
-    {
-        super._burn(tokenId);
-    }
+    {}
 
+    /**
+     * @dev get the token uri
+     */
     function tokenURI(uint256 tokenId)
         public
         view
@@ -439,7 +609,7 @@ contract Registry is
         returns (string memory)
     {
         
-       bytes32 _node = _tokenIdToNodeMap[tokenId];
+       bytes32 _node = _records[tokenId].namehash;
 
        return _metadataGenerator.getTokenURI(reverseNode(_node), _svgImagesProps[_node]);
     }
@@ -447,7 +617,7 @@ contract Registry is
     /**
      * @dev _beforeTokenTransfer 
      */
-     function _beforeTokenTransfer(
+    function _beforeTokenTransfer(
         address from,
         address to,
         uint256 tokenId
@@ -457,19 +627,21 @@ contract Registry is
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
     {   
         
-        if(_records[_tokenIdToNodeMap[tokenId]].nodeType == NodeType.SUBDOMAIN){
-            revert("Registry#_beforeTokenTransfer: SUBDOMAINS_NOT_TRANSFERABLE");
-        }   
+        Record memory recordInfo = _records[tokenId];
 
-        delete _reverseAddress[from];
+        require(recordInfo.createdAt > 0, "Registry#_beforeTokenTransfer: RECORD_NOT_FOUND");
+
+        if(_tlds[recordInfo.tldId].tldType == TLD_TYPE_SOULBOUND){
+            revert("Registry#_beforeTokenTransfer: NOT_TRANSFERABLE");
+        }   
 
         super._beforeTokenTransfer(from, to, tokenId);
     }
 
 
-     /**
-     * @dev See {IERC165-supportsInterface}.
-     */
+    /**
+    * @dev See {IERC165-supportsInterface}.
+    */
     function supportsInterface(bytes4 interfaceId) 
         public 
         view 
@@ -498,13 +670,13 @@ contract Registry is
         (address) 
     {
         
-        Record memory _record = _records[_tokenIdToNodeMap[tokenId]];
+        Record memory _record = _records[tokenId];
         
         if(_record.nodeType == NodeType.DOMAIN){
             return super.ownerOf(tokenId);   
         }
 
-        return super.ownerOf(_records[_record.primaryNode].tokenId); 
+        return super.ownerOf(getRecord(_record.primaryNode).tokenId); 
     }
 
     //////////////////////////// Overrides Ends  //////////////////////////

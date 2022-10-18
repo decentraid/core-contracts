@@ -15,8 +15,9 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "hardhat/console.sol";
 
-contract PublicRegistrar is 
+contract Registrar is 
     Initializable,
     ContextUpgradeable,
     OwnableUpgradeable,
@@ -25,14 +26,14 @@ contract PublicRegistrar is
     RegistrarBase 
 {
 
-
     event SetSigner(address indexed _oldSigner, address indexed  _newSigner);
     event AffiliateShare(address indexed _referrer, address indexed _paymentToken, uint256 _shareAmount);
     event RegisterDomain(uint256 _domainId, address indexed _to, address indexed _paymentToken, uint256 _amount);
     event SetPriceSlippageToleranceRate(uint256 _valueBPS);
-    event AddTLD(string _name, address _addr, bytes32 _node);
+    event RegisterTLD(address _registry);
     event AddPaymentToken(uint256 _id, address _assetAddress);
     event SetTreasuryAddress(address _account);
+    event SetRegistry(address _addr);
 
     using SafeMathUpgradeable for uint256;
     using ECDSAUpgradeable for bytes32;
@@ -41,6 +42,7 @@ contract PublicRegistrar is
      * @dev initialize the contract
      */
     function initialize(
+        address registryAddr,
         address requestSigner,
         address treasuryAddress_,
         address defaultStableCoin_,
@@ -50,7 +52,7 @@ contract PublicRegistrar is
         initializer
     {   
 
-        require(defaultStableCoin_ != address(0), "PubReg#initialize: defaultStableCoin_ cannot be a zero address");
+        require(defaultStableCoin_ != address(0), "Registrar#initialize: defaultStableCoin_ cannot be a zero address");
         //require(treasuryAddress_ != address(0), "PubReg#initialize: treasuryAddress_ cannot be a zero address");
 
         __Context_init_unchained();
@@ -63,14 +65,18 @@ contract PublicRegistrar is
         }
 
         _signer = requestSigner;
-        _checkRequestAuth       = false;
-        affiliateSharePercent   = 500; // 5%  
-        defaultStableCoin       = defaultStableCoin_;
-        treasuryAddress         = treasuryAddress_;
+        _checkRequestAuth       =   false;
+        affiliateSharePercent   =   500; // 5%  
+        defaultStableCoin       =   defaultStableCoin_;
+        treasuryAddress         =   treasuryAddress_;
 
-        _priceSlippageToleranceRate = 50; // 0.5
+        _priceSlippageToleranceRate = 20; // 0.2
 
         _nameLabelValidator = ILabelValidator(_labelValidatorAddr);
+
+        _registry = IRegistry(registryAddr);
+
+        nativeAssetAddress  = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     }
 
      /**
@@ -83,6 +89,20 @@ contract PublicRegistrar is
     {
         treasuryAddress = _account;
         emit SetTreasuryAddress(_account);
+    }
+
+    /**
+     * @dev update treasury address
+     * @param _addr the treasury address
+     */
+    function setRegistry(address _addr)
+        public
+        onlyOwner
+    {
+        require(_addr != address(0), "Registrar#setRegistry: INVALID_REGISTRY_ADDRESS");
+
+        _registry = IRegistry(_addr);
+        emit SetRegistry(_addr);
     }
 
     /**
@@ -108,6 +128,7 @@ contract PublicRegistrar is
         emit SetPriceSlippageToleranceRate(valueBPS);
     }
 
+
     /**
      * @dev get chain id 
      */
@@ -120,84 +141,54 @@ contract PublicRegistrar is
     }
 
 
-    /////////////// PRICING  STARTS ///////////////
-    
-    /**
-     * getPrices
-     */
-    function getPrices(string memory _tld) 
-        public 
-        view 
-        onlyValidLabel(_tld)
-        tldExists(_tld)
-        returns (DomainPrices memory) 
-    {
-        return domainPrices[getTLDNameHash(_tld)];
-    }
-
-    /**
-     * @dev get domain price 
-     * @param _label the label part of a domain
-     */
-    function getPrice(
-        string memory _tld,
-        string memory _label
-    ) 
-        public 
-        view
-        onlyValidLabel(_tld)
-        tldExists(_tld)
-        onlyValidLabel(_label)
-        returns(uint256)
-    {   
-        
-        DomainPrices memory _domainPrices = getPrices(_tld);
-
-        uint labelSize = bytes(_label).length;
-
-        require(labelSize > 0, "BNSRegistry#LABEL_REQUIRED");
-
-        uint256 _p;
-
-        if(labelSize == 1)      _p = _domainPrices.one;
-        else if(labelSize == 2) _p = _domainPrices.two;
-        else if(labelSize == 3) _p = _domainPrices.three;
-        else if(labelSize == 4) _p = _domainPrices.four;
-        else                    _p = _domainPrices.fivePlus;
-
-        return _p;
-    }
-
-
-    ////////////// PRICING ENDS //////////////////
-
-
     ////////////////// Domains counts /////////////
 
     /**
-    * @dev get total domains by tld
-    * @param _tld the tld name in lowercase string
-    * @return the id in uint256
-    */
-    function getTotalDomainByTLD(string memory _tld)
+     * @dev get domain by id
+     * @param _id the domain Id 
+     */
+    function getDomainById(uint256 _id)
         public 
         view 
-        returns(uint256) 
+        returns (DomainInfoDef memory, Record memory) 
     {
-        return domainIdsByTLD[getTLDNameHash(_tld)].length;
+        DomainInfoDef memory _rg = domainsInfo[_id];
+        Record memory _domainRecord;
+
+        _domainRecord = _registry.getRecord(_rg.node);
+
+        return (_rg, _domainRecord);
     }
 
     /**
-    * @dev get total domains by tld
-    * @param _account the account we want
-    * @return the id in uint256
-    */
-    function getTotalDomainsByAccount(address _account)
+     * @dev get domain by node
+     * @param _node the domain Id 
+     */
+    function getDomainByNode(bytes32 _node)
         public 
         view 
-        returns(uint256) 
+        returns (DomainInfoDef memory, Record memory) 
     {
-        return domainIdsByAccount[_account].length;
+        DomainInfoDef memory _rg = domainsInfo[domainIdByNode[_node]];
+        Record memory _domainRecord;
+
+        _domainRecord = _registry.getRecord(_node);
+
+        return (_rg, _domainRecord);
+    }
+
+
+    /** 
+    * @dev get total domains by account
+    */
+    function getTotalDomainsByTLD(
+        bytes32 _tld
+    )
+        public 
+        view 
+        returns (uint256) 
+    {
+        return domainIdsByTLD[_tld].length;
     }
 
     /**
@@ -205,29 +196,44 @@ contract PublicRegistrar is
     */
     function getDomainByTLDIndex(
         string memory _tld,
-        uint256 _idIndex
+        uint256 _index
     )
         public 
         view 
         returns (DomainInfoDef memory, Record memory) 
     {
-        return getDomainInfoById(domainIdsByTLD[getTLDNameHash(_tld)][_idIndex]);
+        return getDomainById(domainIdsByTLD[getTLDNameHash(_tld)][_index]);
+    }
+
+
+    /** 
+     * @dev get total domains by account
+     */
+    function getTotalDomainsByAcct(
+        address _account
+    )
+        public 
+        view 
+        returns (uint256) 
+    {
+        return domainIdsByAccount[_account].length;
     }
 
     /**
     * @dev get domain info by index
     */
-    function getDomainByAccountIndex(
+    function getDomainByAcctIndex(
         address _account,
-        uint256 _idIndex
+        uint256 _index
     )
         public 
         view 
         returns (DomainInfoDef memory, Record memory) 
     {
-        return getDomainInfoById(domainIdsByAccount[_account][_idIndex]);
+        return getDomainById(domainIdsByAccount[_account][_index]);
     }
 
+    
     /////////////////// END Domain info count /////////
 
     ////////////////// Request Auth ////////////////
@@ -236,17 +242,17 @@ contract PublicRegistrar is
      * @dev wether to enable or disable request authorization checks
      * @param _option true to enable, false to disable
      */
-    function enableRequestAuthCheck(bool _option)  public onlyOwner {
+    function enableRequestAuth(bool _option)  public onlyOwner {
         _checkRequestAuth = _option;
     }
 
-      /**
+    /**
      * @dev validate the request
      * @param _authInfo the authorization auth info
      */
     function validateRequestAuth(RequestAuthInfo memory _authInfo) internal view {
         if(_checkRequestAuth) {
-            require(_authInfo.expiry > block.timestamp, "BNSCore: SIGNER_AUTH_EXPIRED");
+            require(_authInfo.expiry > block.timestamp, "Registrar#RequestAuth: SIGNER_AUTH_EXPIRED");
             bytes32 msgHash = keccak256( abi.encodePacked(
                                             _authInfo.authKey,
                                             _msgSender(), 
@@ -254,7 +260,7 @@ contract PublicRegistrar is
                                             getChainId()
                                         ) 
                                 );
-            require(_signer == msgHash.recover(_authInfo.signature), "BNSCore: INVALID_SIGNATURE");
+            require(_signer == msgHash.recover(_authInfo.signature), "Registrar#RequestAuth: INVALID_SIGNATURE");
         }
     }
 
@@ -265,7 +271,7 @@ contract PublicRegistrar is
      */
     function setSigner(address signer_) public onlyOwner {
 
-        require(signer_ != address(0), "BNSCore#setSigner: INVALID_ADDRESS");
+        require(signer_ != address(0), "Registrar#PsetSigner: INVALID_ADDRESS");
 
         address _oldSigner = _signer;
 
@@ -274,133 +280,108 @@ contract PublicRegistrar is
         emit SetSigner(_oldSigner, _signer);
     }
 
-    /////////// Request Auth Ends ////////////
+    //////////// END Auth ///////////////////
+    
+    //////////////////// Payment Tokens //////////////////////
 
-    /////// TLD functions Starts //////
-
-     /**
-     * @dev addTLD adds a deployed tld info
-     * @param _domainExt the tld domain extension name 
-     * @param _assetAddress the tld contract address
-     * @param _domainPrices the domain prices 
+    /**
+     * @dev addPaymentToken - add a payment token
+     * @param _pTokenInfo - PaymentTokenDef
      */
-    function addTLD(
-        string memory       _domainExt,
-        address             _assetAddress,
-        DomainPrices memory _domainPrices
-    )
+    function addPaymentToken(PaymentTokenDef memory _pTokenInfo)
         public 
         onlyOwner
-        onlyValidLabel(_domainExt)
     {
+        
+        require(_pTokenInfo.priceFeedContract != address(0), "Registrar#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED");
 
-        bytes32 _node = getTLDNameHash(_domainExt);
+        address _tokenAddress = _pTokenInfo.tokenAddress;
+   
+        uint256 _pTokenId = totalPaymentTokens++;
 
-        require(registryInfo[_node] == address(0), "PubReg#addTLD: TLD_ALREADY_EXISTS");
+        paymentTokens[_pTokenId] = _pTokenInfo;
+        paymentTokensIndexes[_tokenAddress] = _pTokenId;
 
-        registryInfo[_node] = _assetAddress;
-        domainPrices[_node] = _domainPrices;
-
-        registryIds.push(_node);
-
-        emit AddTLD(_domainExt, _assetAddress, _node);
-    } //end
-
-
-    /**
-     * @dev getTotalTLDs - get total tlds 
-     */
-    function getTotalTLDs() public view returns(uint256){
-        return registryIds.length;
+        emit AddPaymentToken(_pTokenId, _tokenAddress);
     }
 
-
     /**
-     * @dev getTLD fetch a told using the name
-     * @param _tld the name of the tld 
-     * @return _regInfo IRegistry
+     * @dev fetch all payment tokens  IERC20Metadata[] memory
      */
-    function getTLD(string memory _tld) 
-        public
-        view 
-        returns (
-            RegistryInfo memory _regInfo,
-            DomainPrices memory _domainPrices
-        )
-    {   
-        bytes32 _node = getTLDNameHash(_tld);
-        address registryAddr = registryInfo[_node];
-
-        if(registryAddr == address(0)){
-            return (_regInfo, _domainPrices);
-        }    
-
-        _domainPrices = domainPrices[_node];
-        _regInfo = IRegistry(registryAddr).getRegistryInfo();
-    } //end 
-
-
-    /**
-     * @dev getAllTLDs fetch a told using the name
-     * @return IRegistry[]
-     */
-    function getAllTLDs() 
-        public
-        view 
-        returns (
-            RegistryInfo[] memory,
-            DomainPrices[] memory
-        )
-    {   
-
-        RegistryInfo[] memory _regDataArray = new RegistryInfo[](registryIds.length);
-        DomainPrices[] memory _domainPrices = new DomainPrices[](registryIds.length);
-
-        for(uint256 i=0; i < registryIds.length; i++) {
-            _regDataArray[i] = IRegistry(registryInfo[registryIds[i]]).getRegistryInfo();
-            _domainPrices[i] = domainPrices[registryIds[i]];
-        }
-
-        return (_regDataArray, _domainPrices);
-    }
-    /////////// END TLD Functions ///////////
-
-    /////////////// Registry Start /////////////
-
-     /**
-     * @dev get a registry address
-     * @param _tld the top level domain name in string example: cake
-     * @return address 
-     */
-    function getRegistry(string memory _tld) 
+    function getPaymentTokens()
         public 
         view 
-        returns (address)
+        returns (PaymentTokenInfo[] memory)
     {
-        return registryInfo[getTLDNameHash(_tld)];
+        
+        PaymentTokenInfo[] memory pTokenInfoArray   = new PaymentTokenInfo[](totalPaymentTokens);
+
+       for(uint256 i = 0; i < totalPaymentTokens; i++) {
+            if( paymentTokens[i].tokenAddress == nativeAssetAddress ){
+                pTokenInfoArray[i] =  PaymentTokenInfo({
+                    name:           "NATIVE_TOKEN_NAME",
+                    symbol:         "NATIVE_TOKEN_SYMBOL",
+                    decimals:       18,
+                    paymentToken:   paymentTokens[i],
+                    feedInfo:       getChainLinkPrice(paymentTokens[i].priceFeedContract)
+                });
+            } else {
+
+                IERC20Metadata _tokenMeta = IERC20Metadata(paymentTokens[i].tokenAddress);
+                pTokenInfoArray[i] =  PaymentTokenInfo({
+                    name:           _tokenMeta.name(),
+                    symbol:         _tokenMeta.symbol(),
+                    decimals:       _tokenMeta.decimals(),
+                    paymentToken:   paymentTokens[i],
+                    feedInfo:       getChainLinkPrice(paymentTokens[i].priceFeedContract)
+                });
+            }
+       }
+       
+       return pTokenInfoArray;
+    } //end function
+
+    /////////////////// End Payment Tokens //////////////////
+
+
+    function getTLD(string memory _tld)
+        public 
+        view
+        returns(TLDInfo memory)
+    {
+        return _registry.getTLD(getTLDNameHash(_tld));
     }
 
     /**
-     * @dev get a registry address
-     * @param _tld the top level domain name in bytes32 example: cake
-     * @return address 
+     * @dev get registry
      */
-    function getRegistry(bytes32 _tld) 
+    function getRegistry()
+        public
+        view 
+        returns(address)
+    {
+        return address(_registry); //registries[getTLDNameHash(_tld)];
+    }
+
+    /**
+     * @dev getPrice
+     */
+     function getPrice(string memory _tld, string memory _label)
         public 
         view 
-        returns (address)
+        returns(uint256 _price)
     {
-        return registryInfo[_tld];
-    }
+        
+        TLDInfo memory _tldInfo = _registry.getTLD(getTLDNameHash(_tld));
 
-    /**
-     * @dev this retuens the resolver address when the node is provided
-     * @param node the tld node in bytes32
-     */
-    function resolver(bytes32 node) public view returns (address) {
-        return getRegistry(node);
+        uint labelLen = bytes(_label).length;
+
+        if(labelLen == 1)      _price = _tldInfo.prices._1char;
+        else if(labelLen == 2) _price = _tldInfo.prices._2chars;
+        else if(labelLen == 3) _price = _tldInfo.prices._3chars;
+        else if(labelLen == 4) _price = _tldInfo.prices._4chars;
+        else                   _price = _tldInfo.prices._5pchars;
     }
-    ///////////// Registry Ends ///////////////
 
     /**
      * @dev register a domain
@@ -410,23 +391,23 @@ contract PublicRegistrar is
      * @param affiliateAddr the affiliate address who refered the user
      */
     function registerDomain(
-        string                      memory _label,
-        string                      memory _tld,
+        string                      memory  _label,
+        string                      memory  _tld,
         address                     paymentToken,
         address                     affiliateAddr,
-        SvgImageProps   memory      svgImgInfo, // background info
+        SvgProps        memory      _svgProps, // background info
         RequestAuthInfo memory      authInfo 
     )
         public
         onlyValidLabel(_tld)
-        tldExists(_tld)
+        TLDExists(_tld)
         nonReentrant()
         payable
     {   
 
         validateRequestAuth(authInfo);
    
-        require(getRegistry(_tld) != address(0), "PublicRegistrar#registerDomain: INVALID_TLD");
+        require(getRegistry() != address(0), "Registrar#registerDomain: INVALID_TLD");
 
         //IRegistry _iregistry = IRegistry(getRegistry(_tld));
 
@@ -434,7 +415,7 @@ contract PublicRegistrar is
 
         PaymentTokenDef memory _pTokenInfo = paymentTokens[paymentTokensIndexes[paymentToken]];
 
-        require(_pTokenInfo.tokenAddress != address(0), "PubReg#registerDomain: INVALID_PAYMENT_TOKEN");
+        require(_pTokenInfo.tokenAddress != address(0), "Registrar#registerDomain: INVALID_PAYMENT_TOKEN");
 
         uint256 tokenAmount = PriceFeed.toTokenAmount(getPrice(_tld, _label), _pTokenInfo);
 
@@ -468,15 +449,16 @@ contract PublicRegistrar is
         }
 
         // register the domain
-        (uint256 _tokenId, bytes32 _node) = IRegistry(getRegistry(_tld)).addDomain(_msgSender(), _label, svgImgInfo);
+        (uint256 _tokenId, bytes32 _node) = _registry.mintDomain(_msgSender(), _label, _svgProps);
 
         // increment and assign +1
         uint256 _domainId = ++totalDomains;
 
         domainsInfo[_domainId] = DomainInfoDef({
-            assetAddress:   getRegistry(_tld),
+            assetAddress:   getRegistry(),
             tokenId:        _tokenId,
             node:           _node,
+            tld:            getTLDNameHash(_tld),
             userAddress:    _msgSender()
         });
 
@@ -515,24 +497,36 @@ contract PublicRegistrar is
         if(tokenAddress == nativeAssetAddress){
 
              (bool success, ) = _to.call{ value: amount }("");
-            require(success, "TransferBase#transfer: NATIVE_TRANSFER_FAILED");
+            require(success, "Registrar#transferToken: NATIVE_TRANSFER_FAILED");
 
         } else {
 
             IERC20 _erc20 = IERC20(tokenAddress);
 
-            require( _erc20.balanceOf(_msgSender()) >= amount, "BNSCore#INSUFFICIENT_AMOUNT_VALUE");
+            require( _erc20.balanceOf(_msgSender()) >= amount, "Registrar#INSUFFICIENT_AMOUNT_VALUE");
 
             if(_from == address(this)){
-                 require(_erc20.transfer(_to, amount), "BNSCore#ERC20_TRANSFER_FAILED");
+                 require(_erc20.transfer(_to, amount), "Registrar#transferToken: ERC20_TRANSFER_FAILED");
             } else {
-                require(_erc20.transferFrom(_from, _to, amount), "BNSCore#ERC20_TRANSFER_FROM_FAILED");
+                require(_erc20.transferFrom(_from, _to, amount), "Registrar#transferToken: ERC20_TRANSFER_FROM_FAILED");
             }
         }
     }
 
 
     /**
+    * @dev convert percentage value in Basis Point System to amount or token value
+    * @param _percentInBps the percentage calue in basis point system
+    * @param _amount the amount to be used for calculation
+    * @return final value after calculation in uint256
+    */
+    function percentToAmount(uint256 _percentInBps, uint256 _amount) internal pure returns(uint256) {
+        //to get pbs,multiply percentage by 100
+        return  (_amount.mul(_percentInBps)).div(10_000);
+    }
+
+
+     /**
      * processAffiliateShare 
      * @param _referrer address 
      * @param _amount uint256 
@@ -556,96 +550,13 @@ contract PublicRegistrar is
         return _shareAmount;
     }
 
-    /**
-     * @dev get domain by id
-     * @param _id the domain Id 
-     */
-    function getDomainInfoById(uint256 _id)
-        public 
-        view 
-        returns (DomainInfoDef memory, Record memory) 
-    {
-        DomainInfoDef memory _rg = domainsInfo[_id];
-        Record memory _domainRecord;
-
-        if(_rg.assetAddress == address(0)) {
-            return ( _rg, _domainRecord );
-        }
-
-        _domainRecord = IRegistry(_rg.assetAddress).getRecord(_rg.node);
-
-        return (_rg, _domainRecord);
-    }
-    
 
     /**
-     * @dev get domain info by node
-     * @param _node the domain node
-     */
-    function getDomainInfoByNode(bytes32 _node)
-        public 
-        view 
-        returns (DomainInfoDef memory, Record memory) 
-    {
-        return getDomainInfoById(domainIdByNode[_node]);
-    }
-
-
-    /**
-     * @dev addPaymentToken - add a payment token
-     * @param _pTokenInfo - PaymentTokenDef
-     */
-    function addPaymentToken(PaymentTokenDef memory _pTokenInfo )
-        public 
-        onlyOwner
-    {
-        if(_pTokenInfo.priceFeedSource == "chainlink"){
-            require(_pTokenInfo.priceFeedContract == address(0), "PubReg#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED");
-        }
-        
-        require(
-            !(_pTokenInfo.dexInfo.factory == address(0) || _pTokenInfo.dexInfo.router == address(0)), 
-            "PubReg#addPaymentToken: CHAINLINK_FEED_CONTRACT_REQUIRED"
-        );
-
-        address _tokenAddress = _pTokenInfo.tokenAddress;
-
-        if(_tokenAddress == nativeAssetAddress){
-            _tokenAddress = getWETH(_pTokenInfo.dexInfo.router);
-        }
-
-        _pTokenInfo.dexInfo.pricePairToken =  getUniswapPairToken(
-            _pTokenInfo.dexInfo.factory,
-            _tokenAddress,
-            defaultStableCoin
-        );
-
-       uint256 _pTokenId = ++totalPaymentTokens;
-
-        paymentTokens[_pTokenId] = _pTokenInfo;
-        paymentTokensIndexes[_pTokenInfo.tokenAddress] = _pTokenId;
-
-        emit AddPaymentToken(_pTokenId, _pTokenInfo.tokenAddress);
-    }
-
-
-    /**
-    * @dev convert percentage value in Basis Point System to amount or token value
-    * @param _percentInBps the percentage calue in basis point system
-    * @param _amount the amount to be used for calculation
-    * @return final value after calculation in uint256
-    */
-    function percentToAmount(uint256 _percentInBps, uint256 _amount) internal pure returns(uint256) {
-        //to get pbs,multiply percentage by 100
-        return  (_amount.mul(_percentInBps)).div(10_000);
-    }
-
-    /**
-     * @dev withdraw token - if users mistakenly send token to contract
+     * @dev move token - if users mistakenly send token to contract
      * @param _assetAddress the asset contract address
      * @param _to the destination address
      */
-    function withdrawToken(
+    function moveTokens(
         address _assetAddress,
         address _to
     )
@@ -658,10 +569,10 @@ contract PublicRegistrar is
     }
 
      /**
-     * @dev withdraw ethers - if users mistakenly send ethers or native asset to contract
+     * @dev move ethers - if users mistakenly send ethers or native asset to contract
      * @param _to the destination address
      */
-    function withdrawEthers(
+    function moveEthers(
         address payable _to
     )
         public 
@@ -669,9 +580,10 @@ contract PublicRegistrar is
     {
 
         uint256 _bal = address(this).balance;
-        require(_bal > 0, "PubReg#withdrawEthers: ZERO_BALANCE");
+        require(_bal > 0, "Registrar#moveEthers: ZERO_BALANCE");
 
         (bool success, ) = _to.call{ value: _bal }("");
-        require(success, "TransferBase#transfer: NATIVE_TRANSFER_FAILED");
+        require(success, "Registrar#moveEthers: NATIVE_TRANSFER_FAILED");
     }
-}   
+
+}

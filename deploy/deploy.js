@@ -81,9 +81,9 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         //console.log("paymentTokenConfig===>", paymentTokenConfig)
 
         /////////////// DEPLOYING PUBLIC RESOLVER & REGISTRAR ////////
-        Utils.infoMsg("Deploying TLDs Public Registrar Contract")
+        Utils.infoMsg("Deploying Public Registrar Contract")
 
-        let deployedtRegistrarContract = await deploy('PublicRegistrar', {
+        let deployedRegistrarContract = await deploy('Registrar', {
             from: owner,
             log: true,
             proxy: {
@@ -91,7 +91,8 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                 proxyContract: "OpenZeppelinTransparentProxy",
                 execute: {
                   methodName: "initialize",
-                  args: [
+                    args: [
+                        zeroAddress, // initial Registry Addr
                         owner, // signer
                         zeroAddress, // treasury address
                         paymentTokenConfig.defaultStablecoin, // default stable coin
@@ -105,115 +106,171 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         //console.log("deployedtRegistrarContract=-=======>>>>>", deployedtRegistrarContract)
         
 
-        Utils.successMsg(`Registrar Deloyed: ${deployedtRegistrarContract.address}`);
+        Utils.successMsg(`Registrar Deloyed: ${deployedRegistrarContract.address}`);
 
-        deployedContractsAddresses["registrar"] = deployedtRegistrarContract.address;
+        deployedContractsAddresses["registrar"] = deployedRegistrarContract.address;
 
-        ///////// END PUBLIC RESOLVER & REGISTRAR /////////
+
+        let registrarContract = new ethers.Contract(
+                                deployedRegistrarContract.address,
+                                deployedRegistrarContract.abi,
+                                signer
+        )
+
+        const registrarIface = new ethers.utils.Interface(deployedRegistrarContract.abi);
+         
+        const pTokensMulticallParams = []
+        
+        let paymentTokensArray = paymentTokenConfig.paymentTokens
+
+        for( let pTokenInfo of  paymentTokensArray){
+
+            let data = registrarIface.encodeFunctionData("addPaymentToken", [pTokenInfo]);
+
+            pTokensMulticallParams.push(data)
+        }
+
+        
+        //////// Add Payment Tokens /////////////
+        
+        Utils.infoMsg("Running addPaymentToken in multicall mode ")
+        
+        let addPaymentToken = await registrarContract.multicall(pTokensMulticallParams)
+
+        //lets wait for tx to complete 
+        await addPaymentToken.wait();
+
+        Utils.successMsg("addPaymentToken multicall success: "+ addPaymentToken.hash)
+
+        ///////// END  REGISTRAR /////////
       
         Utils.infoMsg("Deploying TLDS Registry Contract Files")
 
         //let bnsTLDParamArray = []
 
         // minters 
-        let mintersArray = [owner, deployedtRegistrarContract.address]
+        let mintersArray = [owner, deployedRegistrarContract.address]
 
-        let lastDeployedRegistry;
 
-        let tldsChainIds = {}
+        let deployedRegistryContract = await deploy('Registry', {
 
-        for(let tldObj of TLDsArrayData){
+            from: owner,
+            log: true,
 
-            //console.log("tldObj====>", tldObj)
-
-            Utils.infoMsg(`Deploying ${tldObj.name} ERC721Registry Contract`)
-
-            let deployedRegistryContract = await deploy('Registry', {
-                from: owner,
-                log: true,
-        
-                proxy: {
-                    owner: owner,
-                    proxyContract: "OpenZeppelinTransparentProxy",
-                    execute: {
-                      methodName: "initialize",
-                      args: [
-                            tldObj.name,
-                            tldObj.symbol,
-                            tldObj.tldName,
-                            tldObj.webHost,
-                            mintersArray,
-                            deployedMetadataGen.address,
-                            deployedNameLabelValidator.address
-                        ]
-                    }
+            proxy: {
+                owner: owner,
+                proxyContract: "OpenZeppelinTransparentProxy",
+                execute: {
+                methodName: "initialize",
+                args: [
+                       "Blockchain Domains",
+                       "BDN",
+                        mintersArray,
+                        deployedMetadataGen.address,
+                        deployedNameLabelValidator.address
+                    ]
                 }
-                
-            });
+            }
+            
+        });
 
-            let tldContractAddress = deployedRegistryContract.address;
+        let registryAddress = deployedRegistryContract.address;
 
-            Utils.successMsg(`TlD ${tldObj.name} Address: ${tldContractAddress}`);
+        Utils.successMsg(`Registry Address: ${registryAddress}`);
+    
+        deployedContractsAddresses["registry"] = registryAddress;
 
-            deployedTLDInfo[tldObj.tldName] = tldContractAddress;
+        let registryContract = new ethers.Contract(
+                        registryAddress,
+                        deployedRegistryContract.abi,
+                        signer
+        )
 
-            lastDeployedRegistry = deployedRegistryContract;
-
-            tldsChainIds[tldObj.tldName.toLowerCase()] = [chainId];
-        }
-
-        deployedContractsAddresses["registries"] = deployedTLDInfo;
         ///////////////////////// EXPORT CONTRACT INFO /////////////////////
         
         ////////////// UPDATE BNS REGISTRAR AND ADD TLD DATA /////
 
+        /// lets set the registry address in the registrar
+        Utils.infoMsg("Setting Resgitry Address in Registar Contract")
+
+        let registarSetRegistryAddr = await registrarContract.setRegistry(registryAddress)
+
+        Utils.successMsg(`registrarSetRegitryAddr success: ${registarSetRegistryAddr.hash}`);
+
         let addTldMulticallParams = []
 
-        const iface = new ethers.utils.Interface(deployedtRegistrarContract.abi);
+        const registryIface = new ethers.utils.Interface(deployedRegistryContract.abi);
 
-        const _domainPrices =  processDomainPrices(ethers, defaultDomainPrices)
+        const _domainPrices = processDomainPrices(ethers, defaultDomainPrices);
 
-        for(let registryName in deployedTLDInfo){
+        let tldType = ethers.utils.solidityKeccak256(["string"], ["TLD_TYPE_DOMAIN"]);
+        
+        let tldsToChainMap = {}
 
-            let registryAddr = deployedTLDInfo[registryName];
+        for(let tldObj of TLDsArrayData){
 
-            let data = iface.encodeFunctionData("addTLD", [registryName, registryAddr, _domainPrices ]);
+            let params = [   
+                tldObj.name,
+                tldObj.tldName,
+                tldType, // tld type
+                tldObj.webHost,
+                "", //metadata uri
+                2, //minLength
+                0, // maxLength
+                _domainPrices
+            ]
+
+            console.log("params===>", params)
+
+            let data = registryIface.encodeFunctionData("addTLD",params);
 
             addTldMulticallParams.push(data)
+
+            tldsToChainMap[tldObj.tldName] = chainId;
         }
 
-        let registrarContract = new ethers.Contract(
-                                deployedtRegistrarContract.address,
-                                deployedtRegistrarContract.abi,
-                                signer
-                            )
-        
+      
         Utils.infoMsg("Running addTLD in multicall mode ")
         
-        let addTldMulticall = await registrarContract.multicall(addTldMulticallParams)
+        let addTldMulticall = await registryContract.multicall(addTldMulticallParams)
+
+        await addTldMulticall.wait()
 
         Utils.successMsg("addTLD multicall success: "+ addTldMulticall.hash)
 
         /////////// END //////
 
-        Utils.successMsg("Exporting tlds  info")
+        /// lets deploy resolver
 
-        let tldsExportPaths = secretsConfig.tldsExportPaths || []
+        Utils.infoMsg("Deploying the resolver")
 
-        for(let tldInfoFile of tldsExportPaths){
+        let deployedResolverContract = await deploy('Resolver', {
 
-            await fsp.mkdir(path.dirname(tldInfoFile), {recursive: true})
+            from: owner,
+            log: true,
 
-            let tldsData = {}
+            proxy: {
+                owner: owner,
+                proxyContract: "OpenZeppelinTransparentProxy",
+                execute: {
+                methodName: "initialize",
+                    args: [deployedRegistryContract.address]
+                }
+            }
+            
+        });
 
-            try { tldsData = require(tldInfoFile) } catch(e){ }
+        Utils.successMsg("resolver deployed successfully: " + deployedResolverContract.hash)
 
-            tldsData = _lodash.merge({},tldsData, tldsChainIds)
+        deployedContractsAddresses["resolver"] = deployedResolverContract.address;
 
-            //lets save it back
-            await fsp.writeFile(tldInfoFile, JSON.stringify(tldsData, null, 2));
-        }
+        //setting resolver to registry
+        Utils.infoMsg("Setting Registry Resolver")
+        
+        let setRegistryResolver = await registryContract.setResolver(deployedResolverContract.address)
 
+        Utils.successMsg("set registry's resolver success: "+ setRegistryResolver.hash)
+        
         //exporting contract info
         Utils.successMsg("Exporting contract info")
 
@@ -245,6 +302,24 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
             await fsp.writeFile(configFilePath, JSON.stringify(contractInfoData, null, 2));
        }
 
+        
+       Utils.successMsg("Exporting tlds  info")
+
+       let tldsExportPaths = secretsConfig.tldsExportPaths || []
+       
+       for(let tldInfoFile of tldsExportPaths){
+       
+           await fsp.mkdir(path.dirname(tldInfoFile), {recursive: true})
+       
+           let tldsData = {}
+       
+           try { tldsData = require(tldInfoFile) } catch(e){ }
+       
+           tldsData = _lodash.merge({},tldsData, tldsToChainMap)
+       
+           //lets save it back
+           await fsp.writeFile(tldInfoFile, JSON.stringify(tldsData, null, 2));
+       }
 
 
        Utils.successMsg(`Exporting abi files`);
@@ -256,21 +331,24 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         for(let exportPath of abiExportsPathsArray) {
 
-            let exportDir = `${exportPath}/${chainId}/`
+            let exportDir = `${exportPath}/`
             
             await fsp.mkdir(exportDir, {recursive: true})
             
             Utils.successMsg(`Exporting registrar.json to ${exportPath}/registrar.json`);
-            await fsp.writeFile(`${exportDir}/registrar.json`, JSON.stringify(deployedtRegistrarContract.abi, null, 2));
+            await fsp.writeFile(`${exportDir}/registrar.json`, JSON.stringify(deployedRegistrarContract.abi, null, 2));
 
             Utils.successMsg(`Exporting metadataGen.json to ${exportPath}/metadataGen.json`);
             await fsp.writeFile(`${exportDir}/metadataGen.json`, JSON.stringify(deployedMetadataGen.abi, null, 2));
 
+            
+            Utils.successMsg(`Exporting resolver.json to ${exportPath}/resolver.json`);
+            await fsp.writeFile(`${exportDir}/resolver.json`, JSON.stringify(deployedResolverContract.abi, null, 2));
 
-            if(lastDeployedRegistry != null){
-                Utils.successMsg(`Exporting registry.json to ${exportPath}/registry.json`);
-                await fsp.writeFile(`${exportDir}/registry.json`, JSON.stringify(lastDeployedRegistry.abi, null, 2));
-            }
+
+            Utils.successMsg(`Exporting registry.json to ${exportPath}/registry.json`);
+            await fsp.writeFile(`${exportDir}/registry.json`, JSON.stringify(deployedRegistryContract.abi, null, 2));
+        
         }
 
     } catch(e) {

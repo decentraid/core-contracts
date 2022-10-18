@@ -11,10 +11,11 @@ import "../Defs.sol";
 
 abstract contract IRegistry is Defs {
 
-    function addDomain(address _to, string calldata _label, SvgImageProps memory _svgImgInfo ) virtual public returns(uint256, bytes32);
+    function mintDomain(address _to, string calldata _label, SvgProps memory _svgInfo ) virtual public returns(uint256, bytes32);
 
-    function getPrices() virtual public view returns (DomainPrices memory);
-    function getPrice(string memory _label) virtual public view returns (uint256);
-    function getRegistryInfo() virtual public view returns(RegistryInfo memory);
+    function getTLD(bytes32 node) virtual  public view returns(TLDInfo memory);
     function getRecord(bytes32 _node) virtual public view returns(Record memory);
+    function ownerOf(uint256 tokenId) virtual public view returns(address);
+    function controller(bytes32 node) virtual public view returns(address);
+
 }

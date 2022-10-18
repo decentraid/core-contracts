@@ -2,135 +2,17 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_to",
-        "type": "address"
-      },
-      {
-        "internalType": "string",
-        "name": "_label",
-        "type": "string"
-      },
-      {
-        "components": [
-          {
-            "internalType": "string",
-            "name": "x1",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "y1",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "x2",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "y2",
-            "type": "string"
-          },
-          {
-            "components": [
-              {
-                "internalType": "string",
-                "name": "offset",
-                "type": "string"
-              },
-              {
-                "internalType": "string",
-                "name": "color",
-                "type": "string"
-              }
-            ],
-            "internalType": "struct Defs.GradientColor[]",
-            "name": "gradientColors",
-            "type": "tuple[]"
-          },
-          {
-            "internalType": "string",
-            "name": "textColor",
-            "type": "string"
-          }
-        ],
-        "internalType": "struct Defs.SvgImageProps",
-        "name": "_svgImgInfo",
-        "type": "tuple"
-      }
-    ],
-    "name": "addDomain",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
-      {
         "internalType": "bytes32",
-        "name": "",
+        "name": "node",
         "type": "bytes32"
       }
     ],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_label",
-        "type": "string"
-      }
-    ],
-    "name": "getPrice",
+    "name": "controller",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "address",
         "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getPrices",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "one",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "two",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "three",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "four",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "fivePlus",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Defs.DomainPrices",
-        "name": "",
-        "type": "tuple"
+        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -180,6 +62,11 @@
           },
           {
             "internalType": "uint256",
+            "name": "tldId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
             "name": "createdAt",
             "type": "uint256"
           },
@@ -198,15 +85,36 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getRegistryInfo",
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "node",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getTLD",
     "outputs": [
       {
         "components": [
           {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
             "internalType": "string",
             "name": "label",
             "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "tldType",
+            "type": "bytes32"
           },
           {
             "internalType": "bytes32",
@@ -214,24 +122,56 @@
             "type": "bytes32"
           },
           {
-            "internalType": "address",
-            "name": "assetAddress",
-            "type": "address"
+            "internalType": "string",
+            "name": "webUrl",
+            "type": "string"
           },
           {
             "internalType": "string",
-            "name": "webHost",
+            "name": "metadataUri",
             "type": "string"
           },
           {
             "internalType": "uint256",
-            "name": "minDomainLength",
+            "name": "minLen",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "maxDomainLength",
+            "name": "maxLen",
             "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "_1char",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "_2chars",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "_3chars",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "_4chars",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "_5pchars",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct Defs.DomainPrices",
+            "name": "prices",
+            "type": "tuple"
           },
           {
             "internalType": "uint256",
@@ -244,9 +184,74 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct Defs.RegistryInfo",
+        "internalType": "struct Defs.TLDInfo",
         "name": "",
         "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_to",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "_label",
+        "type": "string"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "cords",
+            "type": "string"
+          },
+          {
+            "internalType": "string[][]",
+            "name": "gColors",
+            "type": "string[][]"
+          }
+        ],
+        "internalType": "struct Defs.SvgProps",
+        "name": "_svgInfo",
+        "type": "tuple"
+      }
+    ],
+    "name": "mintDomain",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      }
+    ],
+    "name": "ownerOf",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
       }
     ],
     "stateMutability": "view",

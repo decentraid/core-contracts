@@ -3,7 +3,10 @@
 * @website github.com/bnsprotocol
 * @author Team BNS <hello@bns.gg>
 * @license SPDX-License-Identifier: MIT
-*/ 
+*/
+const { alchemyApiKey } = require("./.secrets");
+
+ 
 
 require("@nomiclabs/hardhat-waffle");
 
@@ -36,20 +39,28 @@ module.exports = {
     hardhat: {
       accounts: [{privateKey: `0x${accountPrivateKey}`, balance: "91229544000000000000"}],
       forking: {
-          url: `https://rpc.ankr.com/bsc_testnet_chapel`
-      },
+        url: `https://eth-goerli.g.alchemy.com/v2/${alchemyApiKey}`,
+        blockNumber: 7703889
+     },
       chainId: 1337
     },
+
+    goerli: {
+      url: `https://eth-goerli.g.alchemy.com/v2/${alchemyApiKey}`,
+      chainId: 5,
+      ///gasPrice: 20000000000,
+      accounts: [`0x${accountPrivateKey}`]
+    },   
     
     bsc_testnet: {
-      url:  `https://rpc.ankr.com/bsc_testnet_chapel`,
+      url: `https://data-seed-prebsc-2-s1.binance.org:8545/`,
       chainId: 97,
       ///gasPrice: 20000000000,
       accounts: [`0x${accountPrivateKey}`]
     },   
     
     bsc_mainnet: {
-      url:  `https://speedy-nodes-nyc.moralis.io/${moralisApiKey}/bsc/mainnet`,
+      url:  `https://bsc-dataseed4.binance.org/`,
       chainId: 56,
       ///gasPrice: 20000000000,
       accounts: [`0x${accountPrivateKey}`]
@@ -69,7 +80,7 @@ module.exports = {
         viaIR: true,
         optimizer: {
           enabled: true,
-          runs: 1
+          runs: 200
         }
       }
   },
@@ -78,4 +89,3 @@ module.exports = {
     timeout: 1000000
   }
 };
-

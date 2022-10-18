@@ -10,49 +10,17 @@
         "components": [
           {
             "internalType": "string",
-            "name": "x1",
+            "name": "cords",
             "type": "string"
           },
           {
-            "internalType": "string",
-            "name": "y1",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "x2",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "y2",
-            "type": "string"
-          },
-          {
-            "components": [
-              {
-                "internalType": "string",
-                "name": "offset",
-                "type": "string"
-              },
-              {
-                "internalType": "string",
-                "name": "color",
-                "type": "string"
-              }
-            ],
-            "internalType": "struct Defs.GradientColor[]",
-            "name": "gradientColors",
-            "type": "tuple[]"
-          },
-          {
-            "internalType": "string",
-            "name": "textColor",
-            "type": "string"
+            "internalType": "string[][]",
+            "name": "gColors",
+            "type": "string[][]"
           }
         ],
-        "internalType": "struct Defs.SvgImageProps",
-        "name": "_svgImgProps",
+        "internalType": "struct Defs.SvgProps",
+        "name": "_svgProps",
         "type": "tuple"
       }
     ],
@@ -78,49 +46,17 @@
         "components": [
           {
             "internalType": "string",
-            "name": "x1",
+            "name": "cords",
             "type": "string"
           },
           {
-            "internalType": "string",
-            "name": "y1",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "x2",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "y2",
-            "type": "string"
-          },
-          {
-            "components": [
-              {
-                "internalType": "string",
-                "name": "offset",
-                "type": "string"
-              },
-              {
-                "internalType": "string",
-                "name": "color",
-                "type": "string"
-              }
-            ],
-            "internalType": "struct Defs.GradientColor[]",
-            "name": "gradientColors",
-            "type": "tuple[]"
-          },
-          {
-            "internalType": "string",
-            "name": "textColor",
-            "type": "string"
+            "internalType": "string[][]",
+            "name": "gColors",
+            "type": "string[][]"
           }
         ],
-        "internalType": "struct Defs.SvgImageProps",
-        "name": "_svgImgInfo",
+        "internalType": "struct Defs.SvgProps",
+        "name": "_svgProps",
         "type": "tuple"
       }
     ],

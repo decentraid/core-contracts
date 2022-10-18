@@ -22,31 +22,6 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": false,
-        "internalType": "string",
-        "name": "_name",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "address",
-        "name": "_addr",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes32",
-        "name": "_node",
-        "type": "bytes32"
-      }
-    ],
-    "name": "AddTLD",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": true,
         "internalType": "address",
         "name": "_referrer",
@@ -136,12 +111,38 @@
     "inputs": [
       {
         "indexed": false,
+        "internalType": "address",
+        "name": "_registry",
+        "type": "address"
+      }
+    ],
+    "name": "RegisterTLD",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
         "internalType": "uint256",
         "name": "_valueBPS",
         "type": "uint256"
       }
     ],
     "name": "SetPriceSlippageToleranceRate",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "_addr",
+        "type": "address"
+      }
+    ],
+    "name": "SetRegistry",
     "type": "event"
   },
   {
@@ -177,45 +178,31 @@
     "type": "event"
   },
   {
+    "inputs": [],
+    "name": "_registry",
+    "outputs": [
+      {
+        "internalType": "contract IRegistry",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "components": [
           {
             "internalType": "address",
-            "name": "assetAddress",
+            "name": "tokenAddress",
             "type": "address"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "priceFeedSource",
-            "type": "bytes32"
           },
           {
             "internalType": "address",
             "name": "priceFeedContract",
             "type": "address"
-          },
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "factory",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "router",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "pricePairToken",
-                "type": "address"
-              }
-            ],
-            "internalType": "struct Defs.DexInfo",
-            "name": "dexInfo",
-            "type": "tuple"
           },
           {
             "internalType": "bool",
@@ -239,56 +226,6 @@
       }
     ],
     "name": "addPaymentToken",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_domainExt",
-        "type": "string"
-      },
-      {
-        "internalType": "address",
-        "name": "_assetAddress",
-        "type": "address"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "one",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "two",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "three",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "four",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "fivePlus",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Defs.DomainPrices",
-        "name": "_domainPrices",
-        "type": "tuple"
-      }
-    ],
-    "name": "addTLD",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -389,45 +326,6 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "name": "domainPrices",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "one",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "two",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "three",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "four",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "fivePlus",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
@@ -451,6 +349,11 @@
         "type": "bytes32"
       },
       {
+        "internalType": "bytes32",
+        "name": "tld",
+        "type": "bytes32"
+      },
+      {
         "internalType": "address",
         "name": "userAddress",
         "type": "address"
@@ -467,96 +370,9 @@
         "type": "bool"
       }
     ],
-    "name": "enableRequestAuthCheck",
+    "name": "enableRequestAuth",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getAllTLDs",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "string",
-            "name": "label",
-            "type": "string"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "namehash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "address",
-            "name": "assetAddress",
-            "type": "address"
-          },
-          {
-            "internalType": "string",
-            "name": "webHost",
-            "type": "string"
-          },
-          {
-            "internalType": "uint256",
-            "name": "minDomainLength",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "maxDomainLength",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "createdAt",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "updatedAt",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Defs.RegistryInfo[]",
-        "name": "",
-        "type": "tuple[]"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "one",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "two",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "three",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "four",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "fivePlus",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Defs.DomainPrices[]",
-        "name": "",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -583,9 +399,21 @@
     "name": "getChainLinkPrice",
     "outputs": [
       {
-        "internalType": "uint256",
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "rate",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "decimals",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Defs.FeedInfo",
         "name": "",
-        "type": "uint256"
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -600,11 +428,11 @@
       },
       {
         "internalType": "uint256",
-        "name": "_idIndex",
+        "name": "_index",
         "type": "uint256"
       }
     ],
-    "name": "getDomainByAccountIndex",
+    "name": "getDomainByAcctIndex",
     "outputs": [
       {
         "components": [
@@ -621,6 +449,11 @@
           {
             "internalType": "bytes32",
             "name": "node",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "tld",
             "type": "bytes32"
           },
           {
@@ -667,95 +500,7 @@
           },
           {
             "internalType": "uint256",
-            "name": "createdAt",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "updatedAt",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Defs.Record",
-        "name": "",
-        "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_tld",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_idIndex",
-        "type": "uint256"
-      }
-    ],
-    "name": "getDomainByTLDIndex",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "assetAddress",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "node",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "address",
-            "name": "userAddress",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct Defs.DomainInfoDef",
-        "name": "",
-        "type": "tuple"
-      },
-      {
-        "components": [
-          {
-            "internalType": "string",
-            "name": "label",
-            "type": "string"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "namehash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "primaryNode",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "parentNode",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "enum Defs.NodeType",
-            "name": "nodeType",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
+            "name": "tldId",
             "type": "uint256"
           },
           {
@@ -785,7 +530,7 @@
         "type": "uint256"
       }
     ],
-    "name": "getDomainInfoByIndex",
+    "name": "getDomainById",
     "outputs": [
       {
         "components": [
@@ -802,6 +547,11 @@
           {
             "internalType": "bytes32",
             "name": "node",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "tld",
             "type": "bytes32"
           },
           {
@@ -844,6 +594,11 @@
           {
             "internalType": "uint256",
             "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tldId",
             "type": "uint256"
           },
           {
@@ -873,7 +628,7 @@
         "type": "bytes32"
       }
     ],
-    "name": "getDomainInfoByNode",
+    "name": "getDomainByNode",
     "outputs": [
       {
         "components": [
@@ -890,6 +645,11 @@
           {
             "internalType": "bytes32",
             "name": "node",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "tld",
             "type": "bytes32"
           },
           {
@@ -936,6 +696,114 @@
           },
           {
             "internalType": "uint256",
+            "name": "tldId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "updatedAt",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Defs.Record",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_tld",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getDomainByTLDIndex",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "assetAddress",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "node",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "tld",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "address",
+            "name": "userAddress",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct Defs.DomainInfoDef",
+        "name": "",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "label",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "namehash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "primaryNode",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "parentNode",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum Defs.NodeType",
+            "name": "nodeType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tldId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
             "name": "createdAt",
             "type": "uint256"
           },
@@ -960,66 +828,73 @@
       {
         "components": [
           {
-            "internalType": "address",
-            "name": "assetAddress",
-            "type": "address"
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
           },
           {
-            "internalType": "bytes32",
-            "name": "priceFeedSource",
-            "type": "bytes32"
+            "internalType": "string",
+            "name": "symbol",
+            "type": "string"
           },
           {
-            "internalType": "address",
-            "name": "priceFeedContract",
-            "type": "address"
+            "internalType": "uint256",
+            "name": "decimals",
+            "type": "uint256"
           },
           {
             "components": [
               {
                 "internalType": "address",
-                "name": "factory",
+                "name": "tokenAddress",
                 "type": "address"
               },
               {
                 "internalType": "address",
-                "name": "router",
+                "name": "priceFeedContract",
                 "type": "address"
               },
               {
-                "internalType": "address",
-                "name": "pricePairToken",
-                "type": "address"
+                "internalType": "bool",
+                "name": "enabled",
+                "type": "bool"
+              },
+              {
+                "internalType": "uint256",
+                "name": "addedOn",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "updatedOn",
+                "type": "uint256"
               }
             ],
-            "internalType": "struct Defs.DexInfo",
-            "name": "dexInfo",
+            "internalType": "struct Defs.PaymentTokenDef",
+            "name": "paymentToken",
             "type": "tuple"
           },
           {
-            "internalType": "bool",
-            "name": "enabled",
-            "type": "bool"
-          },
-          {
-            "internalType": "uint256",
-            "name": "addedOn",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "updatedOn",
-            "type": "uint256"
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "rate",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "decimals",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct Defs.FeedInfo",
+            "name": "feedInfo",
+            "type": "tuple"
           }
         ],
-        "internalType": "struct Defs.PaymentTokenDef[]",
-        "name": "_paymentTokens",
+        "internalType": "struct Defs.PaymentTokenInfo[]",
+        "name": "",
         "type": "tuple[]"
-      },
-      {
-        "internalType": "contract IERC20Metadata[]",
-        "name": "_tokensInfo",
-        "type": "address[]"
       }
     ],
     "stateMutability": "view",
@@ -1042,7 +917,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "_price",
         "type": "uint256"
       }
     ],
@@ -1050,129 +925,7 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_tld",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "_label",
-        "type": "string"
-      }
-    ],
-    "name": "getPriceInfo",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "price",
-            "type": "uint256"
-          },
-          {
-            "internalType": "address",
-            "name": "assetAddress",
-            "type": "address"
-          },
-          {
-            "internalType": "string",
-            "name": "name",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "symbol",
-            "type": "string"
-          },
-          {
-            "internalType": "uint256",
-            "name": "decimals",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Defs.PriceInfoDef",
-        "name": "",
-        "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_tld",
-        "type": "string"
-      }
-    ],
-    "name": "getPrices",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "one",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "two",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "three",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "four",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "fivePlus",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Defs.DomainPrices",
-        "name": "",
-        "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_tld",
-        "type": "string"
-      }
-    ],
-    "name": "getRegistry",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_tld",
-        "type": "bytes32"
-      }
-    ],
+    "inputs": [],
     "name": "getRegistry",
     "outputs": [
       {
@@ -1197,9 +950,24 @@
       {
         "components": [
           {
+            "internalType": "uint256",
+            "name": "id",
+            "type": "uint256"
+          },
+          {
             "internalType": "string",
             "name": "label",
             "type": "string"
+          },
+          {
+            "internalType": "string",
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "tldType",
+            "type": "bytes32"
           },
           {
             "internalType": "bytes32",
@@ -1207,24 +975,56 @@
             "type": "bytes32"
           },
           {
-            "internalType": "address",
-            "name": "assetAddress",
-            "type": "address"
+            "internalType": "string",
+            "name": "webUrl",
+            "type": "string"
           },
           {
             "internalType": "string",
-            "name": "webHost",
+            "name": "metadataUri",
             "type": "string"
           },
           {
             "internalType": "uint256",
-            "name": "minDomainLength",
+            "name": "minLen",
             "type": "uint256"
           },
           {
             "internalType": "uint256",
-            "name": "maxDomainLength",
+            "name": "maxLen",
             "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "uint256",
+                "name": "_1char",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "_2chars",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "_3chars",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "_4chars",
+                "type": "uint256"
+              },
+              {
+                "internalType": "uint256",
+                "name": "_5pchars",
+                "type": "uint256"
+              }
+            ],
+            "internalType": "struct Defs.DomainPrices",
+            "name": "prices",
+            "type": "tuple"
           },
           {
             "internalType": "uint256",
@@ -1237,40 +1037,8 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct Defs.RegistryInfo",
-        "name": "_regInfo",
-        "type": "tuple"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "one",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "two",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "three",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "four",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "fivePlus",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Defs.DomainPrices",
-        "name": "_domainPrices",
+        "internalType": "struct Defs.TLDInfo",
+        "name": "",
         "type": "tuple"
       }
     ],
@@ -1299,44 +1067,12 @@
   {
     "inputs": [
       {
-        "internalType": "string",
-        "name": "_tld",
-        "type": "string"
-      }
-    ],
-    "name": "getTotalDomainByTLD",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "_account",
         "type": "address"
       }
     ],
-    "name": "getTotalDomainsByAccount",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getTotalTLDs",
+    "name": "getTotalDomainsByAcct",
     "outputs": [
       {
         "internalType": "uint256",
@@ -1350,46 +1086,17 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_factory",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_tokenA",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_tokenB",
-        "type": "address"
+        "internalType": "bytes32",
+        "name": "_tld",
+        "type": "bytes32"
       }
     ],
-    "name": "getUniswapPairToken",
+    "name": "getTotalDomainsByTLD",
     "outputs": [
       {
-        "internalType": "address",
-        "name": "pair",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "pure",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_router",
-        "type": "address"
-      }
-    ],
-    "name": "getWETH",
-    "outputs": [
-      {
-        "internalType": "address",
+        "internalType": "uint256",
         "name": "",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -1397,6 +1104,11 @@
   },
   {
     "inputs": [
+      {
+        "internalType": "address",
+        "name": "registryAddr",
+        "type": "address"
+      },
       {
         "internalType": "address",
         "name": "requestSigner",
@@ -1419,6 +1131,37 @@
       }
     ],
     "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address payable",
+        "name": "_to",
+        "type": "address"
+      }
+    ],
+    "name": "moveEthers",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_assetAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_to",
+        "type": "address"
+      }
+    ],
+    "name": "moveTokens",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1480,40 +1223,13 @@
     "outputs": [
       {
         "internalType": "address",
-        "name": "assetAddress",
+        "name": "tokenAddress",
         "type": "address"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "priceFeedSource",
-        "type": "bytes32"
       },
       {
         "internalType": "address",
         "name": "priceFeedContract",
         "type": "address"
-      },
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "factory",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "router",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "pricePairToken",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct Defs.DexInfo",
-        "name": "dexInfo",
-        "type": "tuple"
       },
       {
         "internalType": "bool",
@@ -1621,67 +1337,10 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "registryIds",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "name": "registryInfo",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "renounceOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "node",
-        "type": "bytes32"
-      }
-    ],
-    "name": "resolver",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -1706,6 +1365,19 @@
       }
     ],
     "name": "setPriceSlippageToleranceRate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_addr",
+        "type": "address"
+      }
+    ],
+    "name": "setRegistry",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1766,40 +1438,13 @@
         "components": [
           {
             "internalType": "address",
-            "name": "assetAddress",
+            "name": "tokenAddress",
             "type": "address"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "priceFeedSource",
-            "type": "bytes32"
           },
           {
             "internalType": "address",
             "name": "priceFeedContract",
             "type": "address"
-          },
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "factory",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "router",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "pricePairToken",
-                "type": "address"
-              }
-            ],
-            "internalType": "struct Defs.DexInfo",
-            "name": "dexInfo",
-            "type": "tuple"
           },
           {
             "internalType": "bool",
@@ -1883,56 +1528,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_pairAddress",
-        "type": "address"
-      }
-    ],
-    "name": "uniswapFetchTokenPrice",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address payable",
-        "name": "_to",
-        "type": "address"
-      }
-    ],
-    "name": "withdrawEthers",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_assetAddress",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "_to",
-        "type": "address"
-      }
-    ],
-    "name": "withdrawToken",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   }
 ]
