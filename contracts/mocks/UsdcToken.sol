@@ -630,10 +630,12 @@ contract ERC20 is Context, IERC20 {
 // File: contracts/DummyToken.sol
 
 
-/**
- * LibertyPie (https://libertypie.com)
- * @author LibertyPie <hello@libertypie.com>
- */
+/*
+* Decentra ID
+* @website github.com/decentraid
+* @author Decentraid Team <hello@decentraid.io>
+* @license SPDX-License-Identifier: MIT
+*/
  
 pragma solidity ^0.8.0;
 pragma abicoder v2;

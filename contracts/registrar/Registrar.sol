@@ -1,7 +1,7 @@
 /** 
-* Blockchain Domains
-* @website github.com/bnsprotocol
-* @author Team BNS <hello@bns.gg>
+* Decentra ID
+* @website github.com/decentraid
+* @author Decentraid Team <hello@decentraid.io>
 * @license SPDX-License-Identifier: MIT
 */ 
 pragma solidity ^0.8.0;
