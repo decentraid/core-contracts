@@ -27,7 +27,8 @@ contract ChainLink is Defs {
             //uint256 updatedAt,
             //uint80 answeredInRound
         )   =   _aggrv3.latestRoundData();
-
+        
         return FeedInfo({ rate: uint256(answer), decimals: _aggrv3.decimals() }); 
-    }   
+    }  
+     
 }

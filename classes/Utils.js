@@ -11,7 +11,7 @@ const web3Utils = require("web3-utils")
 const colors = require("colors");
 const _web3 = new (require('web3'))
 const BN = require('bn.js');
-
+const ethers = require("ethers")
 
 module.exports = class Utils {
 
@@ -205,4 +205,7 @@ module.exports = class Utils {
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
     
+    static parseEthers(_val) {
+        return ethers.utils.parseEther(_val.toString())
+    }
  }

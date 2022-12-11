@@ -9,6 +9,8 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "../Defs.sol";
 import "./ChainLink.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "hardhat/console.sol";
 
 contract PriceFeed is Defs, ChainLink {
 
@@ -19,21 +21,43 @@ contract PriceFeed is Defs, ChainLink {
      * @param _pTokenInfo the payment token Info 
      */
     function toTokenAmount(
-        uint256 _amountUSDT, 
-        PaymentTokenDef memory _pTokenInfo
+        uint256 _amountUSD, 
+        PaymentTokenDef memory _pTokenInfo,
+        uint _pTokenDecimals
     )
         public 
         view 
         returns(uint256)
     {
-        if(_amountUSDT == 0) return 0;
+        if(_amountUSD == 0) return 0;
 
-        uint256 _rate;
+        FeedInfo memory feed = getChainLinkPrice(_pTokenInfo.priceFeedContract);
 
-        _rate = getChainLinkPrice(_pTokenInfo.priceFeedContract).rate;
+        uint256 _rate = feed.rate;
 
-        uint256 _price = _rate.mul(_amountUSDT); 
+       /// console.log("rrraaattteee before ============>", feed.rate);
 
+        //convert the rate to 18th unit if the feed's decimals is not 18
+        if(feed.decimals < 18){
+            _rate = feed.rate *  10 ** (18 - feed.decimals);
+        }
+
+
+        uint256 _price = (_amountUSD * 10 ** 18) / _rate;
+
+        ////console.log("_priceBefore============>", _price);
+
+        //convert to the decimal of the final asset
+        if(_pTokenDecimals < 18) {
+            _price = _price  / 10 ** (18 - _pTokenDecimals);
+        }
+
+        /*console.log("_priceAfter============>", _price);
+        console.log("rate decimals============>", feed.decimals);
+        console.log("_amountUSD============>", _amountUSD);
+        console.log("_pTokenDecimals============>", _pTokenDecimals);
+        */
+        
         return _price;
     } 
 

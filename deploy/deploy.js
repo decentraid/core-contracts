@@ -11,6 +11,10 @@ const secretsConfig = require("../.secrets.js")
 const fsp = require("fs/promises")
 const _lodash = require("lodash")
 const defaultDomainPrices = require("../config/domainPrices.js")
+///const lockToMintRequiredTokensData = require("../config/lockToMintRequiredTokens")
+const lockToMintTokenAddresses = require("../config/lockToMintTokenAddresses.js")
+const { lockToMintMinimumRequiredTokens } = require("../config/GeneralConfig")
+
 
 const zeroAddress = "0x0000000000000000000000000000000000000000";
 
@@ -35,6 +39,20 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         Utils.successMsg(`owner: ${owner}`)
         Utils.successMsg(`networkName: ${networkName}`)
         Utils.successMsg(`chainId: ${chainId}`)
+
+        // deploy local tokens needed for payment tokens
+        if (["localhost", "local", "hardhat"].includes(networkName)) {
+
+            Utils.infoMsg("Deploying UsdcToken Contract")
+
+            //first deploy usdc
+            let usdcToken = await deploy('UsdcToken', {
+                from: owner,
+                log: true
+            });
+
+            Utils.infoMsg(`UsdcToken: ${usdcToken.address}`)
+        }
         
         let configFileName = (networkName.startsWith("local")) ? "local" : networkName;
 
@@ -42,12 +60,35 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         let TLDsArrayData = await TLDsFile(networkName)
 
-        await deployMockToken(deploy, networkName, owner)
-
         let _paymentTokenConfigFile = require(`../config/paymentTokens/${configFileName}.js`)
 
         let paymentTokenConfig = await _paymentTokenConfigFile(networkName)
 
+        let lockToMintTokenAddress;
+
+        if (["localhost", "local", "hardhat"].includes(networkName)) {
+
+            lockToMintTokenAddress = await deployMockToken({
+                deploy,
+                networkName,
+                owner,
+                tokenName: "Decentraid",
+                tokenSymbol: "DID"
+            })
+        } else {
+
+            lockToMintTokenAddress = lockToMintTokenAddresses[networkName] || ""
+
+            if(lockToMintTokenAddress == "" || lockToMintTokenAddress == zeroAddress) {
+                throw new Error(`lockToMintTokenAddress address is missing for network ${networkName}`)
+            }
+        }
+        
+        deployedContractsAddresses["projectToken"] = lockToMintTokenAddress;
+
+        //console.log("deployedContractsAddresses====>>>>", deployedContractsAddresses)
+
+        //return false;
 
         ///////////// START DEPLOY OF NAME LABEL VALIDATOR ///////////////////
         Utils.infoMsg("Deploying MetadataGenerator Contract")
@@ -95,8 +136,8 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                         zeroAddress, // initial Registry Addr
                         owner, // signer
                         zeroAddress, // treasury address
-                        paymentTokenConfig.defaultStablecoin, // default stable coin
-                        deployedNameLabelValidator.address
+                        deployedNameLabelValidator.address,
+                        lockToMintTokenAddress
                     ]
                 }
             }
@@ -132,15 +173,31 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         
         //////// Add Payment Tokens /////////////
+
+        /*/ the lock to mint required tokens is formated similar to domain prices
+        const _lockToMintRequiredTokens = processDomainPrices(ethers, lockToMintRequiredTokensData)
+
+        pTokensMulticallParams.push(
+            registrarIface.encodeFunctionData("setLockToMintRequiredTokens", [_lockToMintRequiredTokens])
+        );*/
         
-        Utils.infoMsg("Running addPaymentToken in multicall mode ")
+        if (lockToMintMinimumRequiredTokens > 0) {
+            pTokensMulticallParams.push(
+                registrarIface.encodeFunctionData(
+                    "setLockToMintMinimumRequiredTokens",
+                    [lockToMintMinimumRequiredTokens]
+                )
+            );
+        }
+
+        Utils.infoMsg("Running addPaymentToken & setLockToMintRequiredTokens in multicall mode ")
         
-        let addPaymentToken = await registrarContract.multicall(pTokensMulticallParams)
+        let registrarMulticall = await registrarContract.multicall(pTokensMulticallParams)
 
         //lets wait for tx to complete 
-        await addPaymentToken.wait();
+        await registrarMulticall.wait();
 
-        Utils.successMsg("addPaymentToken multicall success: "+ addPaymentToken.hash)
+        Utils.successMsg("Registrar multicall success: "+ registrarMulticall.hash)
 
         ///////// END  REGISTRAR /////////
       
@@ -163,8 +220,8 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
                 execute: {
                 methodName: "initialize",
                 args: [
-                       "Blockchain Domains",
-                       "BDN",
+                       "Decentra NFT Identities",
+                       "DID",
                         mintersArray,
                         deployedMetadataGen.address,
                         deployedNameLabelValidator.address
@@ -202,7 +259,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         const registryIface = new ethers.utils.Interface(deployedRegistryContract.abi);
 
         const _domainPrices = processDomainPrices(ethers, defaultDomainPrices);
-
+        
         let tldType = ethers.utils.solidityKeccak256(["string"], ["TLD_TYPE_DOMAIN"]);
         
         let tldsToChainMap = {}
@@ -210,17 +267,16 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         for(let tldObj of TLDsArrayData){
 
             let params = [   
-                tldObj.name,
-                tldObj.tldName,
+                tldObj.tld,
                 tldType, // tld type
                 tldObj.webHost,
                 "", //metadata uri
-                2, //minLength
+                3, //minLength
                 0, // maxLength
                 _domainPrices
             ]
 
-            console.log("params===>", params)
+            //console.log("params===>", params)
 
             let data = registryIface.encodeFunctionData("addTLD",params);
 
@@ -245,10 +301,9 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         Utils.infoMsg("Deploying the resolver")
 
         let deployedResolverContract = await deploy('Resolver', {
-
+            
             from: owner,
             log: true,
-
             proxy: {
                 owner: owner,
                 proxyContract: "OpenZeppelinTransparentProxy",
@@ -377,26 +432,24 @@ function processDomainPrices(ethers, domainPricesObj) {
 }
 
 
-async function deployMockToken (deploy, networkName, owner) {
-    if(["hardhat", "local", "localhost"].includes(networkName)){
+async function deployMockToken ({ deploy, networkName, owner, tokenName, tokenSymbol }) {
+    //if(["hardhat", "local", "localhost"].includes(networkName)){
 
         isLocalDev = true;
     
         ///////////////////////// USDC Mock Address //////////////
         Utils.infoMsg("Deploying ERC20 USDC Mock Token ");
     
-        let deployedUsdcContract = await deploy('UsdcToken', {
+        let deployedContract = await deploy('ERC20MockToken', {
             from: owner,
-            args: [],
+            args: [tokenName, tokenSymbol],
             log:  false
         });
     
-        let usdcTokenContractAddress = deployedUsdcContract.address;
     
-    
-        Utils.successMsg("Deployed ERC20 USDC Mock Token Address: "+ usdcTokenContractAddress);
+        Utils.successMsg(`Deployed ERC20 Mock Token Address ${tokenName} (${tokenSymbol}): `+ deployedContract.address);
     
         ///////////////// END USDC MOCK ADDRESS ////////////////////////////
-        return { usdc: usdcTokenContractAddress }
-    }
+        return deployedContract.address;
+    //}
 }

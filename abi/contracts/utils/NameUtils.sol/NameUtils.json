@@ -20,11 +20,6 @@
         "type": "string"
       },
       {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
         "internalType": "bytes32",
         "name": "tldType",
         "type": "bytes32"

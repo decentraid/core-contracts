@@ -26,7 +26,7 @@
         "type": "bytes32"
       }
     ],
-    "name": "getRecord",
+    "name": "getNode",
     "outputs": [
       {
         "components": [
@@ -66,6 +66,23 @@
             "type": "uint256"
           },
           {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "cords",
+                "type": "string"
+              },
+              {
+                "internalType": "string[][]",
+                "name": "gcolors",
+                "type": "string[][]"
+              }
+            ],
+            "internalType": "struct Defs.SvgProps",
+            "name": "svgImageProps",
+            "type": "tuple"
+          },
+          {
             "internalType": "uint256",
             "name": "createdAt",
             "type": "uint256"
@@ -76,7 +93,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct Defs.Record",
+        "internalType": "struct Defs.Node",
         "name": "",
         "type": "tuple"
       }
@@ -104,11 +121,6 @@
           {
             "internalType": "string",
             "name": "label",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "name",
             "type": "string"
           },
           {
@@ -205,6 +217,11 @@
         "type": "string"
       },
       {
+        "internalType": "string",
+        "name": "_tld",
+        "type": "string"
+      },
+      {
         "components": [
           {
             "internalType": "string",
@@ -213,12 +230,12 @@
           },
           {
             "internalType": "string[][]",
-            "name": "gColors",
+            "name": "gcolors",
             "type": "string[][]"
           }
         ],
         "internalType": "struct Defs.SvgProps",
-        "name": "_svgInfo",
+        "name": "_svgProps",
         "type": "tuple"
       }
     ],

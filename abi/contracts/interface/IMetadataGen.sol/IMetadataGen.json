@@ -15,7 +15,7 @@
           },
           {
             "internalType": "string[][]",
-            "name": "gColors",
+            "name": "gcolors",
             "type": "string[][]"
           }
         ],
@@ -51,7 +51,7 @@
           },
           {
             "internalType": "string[][]",
-            "name": "gColors",
+            "name": "gcolors",
             "type": "string[][]"
           }
         ],

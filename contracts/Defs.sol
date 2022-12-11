@@ -56,7 +56,6 @@ contract Defs {
     struct TLDInfo {
         uint256         id;
         string          label;
-        string          name;
         bytes32         tldType;
         bytes32         namehash;
         string          webUrl;
@@ -68,7 +67,7 @@ contract Defs {
         uint256         updatedAt;
     }
 
-    struct Record {
+    struct Node {
         string      label;
         bytes32     namehash;
         bytes32     primaryNode;
@@ -76,6 +75,7 @@ contract Defs {
         NodeType    nodeType;
         uint256     tokenId;
         uint256     tldId;
+        SvgProps    svgImageProps;
         uint256     createdAt;
         uint256     updatedAt;  
     }
@@ -89,7 +89,7 @@ contract Defs {
         uint256     expiry; // expiry
     }
 
-    struct DomainInfoDef {
+    struct RegistrarNodeInfo {
         address   assetAddress;
         uint256   tokenId;
         bytes32   node;
@@ -99,7 +99,7 @@ contract Defs {
 
     struct SvgProps {
         string cords;
-        string[][] gColors;
+        string[][] gcolors;
     }
     
 
@@ -110,5 +110,6 @@ contract Defs {
         string  symbol; 
         uint256 decimals;
     }
+
 
 }

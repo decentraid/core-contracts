@@ -55,14 +55,14 @@ contract MetadataGen is Defs {
         returns (string memory)
     {
 
-        bytes memory gColors = abi.encodePacked();
+        bytes memory gcolors = abi.encodePacked();
 
-        for(uint i = 0; i < _svgProps.gColors.length; i++){
-            gColors = abi.encodePacked(
-                gColors, 
+        for(uint i = 0; i < _svgProps.gcolors.length; i++){
+            gcolors = abi.encodePacked(
+                gcolors, 
                 '<stop',
-                    'offset="',     _svgProps.gColors[i][0], '"',
-                    'stop-color="', _svgProps.gColors[i][1], '"',
+                    'offset="',     _svgProps.gcolors[i][0], '"',
+                    'stop-color="', _svgProps.gcolors[i][1], '"',
                 '/>'
             );
         }
@@ -79,7 +79,7 @@ contract MetadataGen is Defs {
 
         bytes memory svgTextData = abi.encodePacked(
             '<style>',
-                '.__bdomains_svg_text {',
+                '.__bdn_svg_text {',
                     'font: 22px bold Sans-Serif;',
                     'fill: #000000;',
                     'text-opacity: 0.8;',
@@ -99,9 +99,9 @@ contract MetadataGen is Defs {
                 '<defs>',
                     '<linearGradient',
                         'id="bdn-g"',
-
+                        _svgProps.cords,
                     '>',
-                        gColors,
+                        gcolors,
                     '</linearGradient>',
                 '</defs>',
                 '<rect width="100%" height="100%" fill="url(#bdn-g)" />',

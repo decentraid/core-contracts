@@ -25,7 +25,8 @@ require('hardhat-abi-exporter',{ path: 'data/abi', clear: true });
 const {  
   moralisApiKey,
   accountPrivateKey,
-  etherscanAPIKey
+  etherscanAPIKey,
+  noderealApiKey
 } = require(__dirname+'/.secrets.js');
 
 
@@ -39,9 +40,8 @@ module.exports = {
     hardhat: {
       accounts: [{privateKey: `0x${accountPrivateKey}`, balance: "91229544000000000000"}],
       forking: {
-        url: `https://eth-goerli.g.alchemy.com/v2/${alchemyApiKey}`,
-        blockNumber: 7703889
-     },
+        url: `https://eth-goerli.nodereal.io/v1/${noderealApiKey}`,//`https://eth-goerli.g.alchemy.com/v2/${alchemyApiKey}`,
+      },
       chainId: 1337
     },
 

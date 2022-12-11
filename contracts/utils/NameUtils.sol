@@ -40,7 +40,7 @@ contract NameUtils is DataStore  {
         pure 
         returns (bytes32 _namehash) 
     {  
-        require(_parentHash == "", "NameUtils#nameHash: PARENT_HASH_REQUIRED");
+        require(_parentHash != bytes32(""), "NameUtils#nameHash: PARENT_HASH_REQUIRED");
         _namehash = keccak256(abi.encodePacked(_parentHash, keccak256(abi.encodePacked(_label))));
     }
 

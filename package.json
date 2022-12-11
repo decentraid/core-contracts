@@ -8,7 +8,7 @@
     "c": "npx hardhat compile",
     "clean": "npx hardhat clean",
     "h_flatten": "npx hardhat flatten > hardhat_flattened.sol",
-    "f": "truffle-flattener ./contracts/CanadaCoin.sol --output ./flattened.sol",
+    "f": "npx truffle-flattener ./contracts/ERC20MockToken.sol --output ./mock_erc20_ful.sol",
     "deploy_kovan": "npx hardhat deploy --network kovan --reset",
     "deploy_ropsten": "npx hardhat deploy --network ropsten --reset",
     "deploy_rinkeby": "npx hardhat deploy --network rinkeby --reset",
@@ -17,7 +17,7 @@
     "deploy_bsc_testnet": "npx hardhat deploy --network bsc_testnet --reset",
     "deploy_polygon_testnet": "npx hardhat deploy --network polygon_testnet --reset",
     "deploy_local": "npx hardhat clean && npx hardhat deploy --network localhost --reset",
-    "run_node": "npx hardhat node --no-deploy",
+    "run_node": "node ./cli/run_node.js",
     "abi": "npx hardhat export-abi"
   },
   "author": "",
@@ -26,7 +26,9 @@
     "@chainlink/contracts": "^0.4.2",
     "hardhat-abi-exporter": "^2.8.0",
     "ipfs-http-client": "^56.0.1",
+    "js-confetti": "^0.11.0",
     "lodash": "^4.17.21",
+    "shelljs": "^0.8.5",
     "solregex2": "^0.4.4",
     "truffle-flattener": "^1.6.0"
   },

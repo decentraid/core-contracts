@@ -1,5 +1,63 @@
 [
   {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "_nodeHashToIdMap",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "_registrarNodesData",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "assetAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "node",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "tld",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "userAddress",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "_registry",
     "outputs": [
@@ -41,12 +99,12 @@
   {
     "inputs": [
       {
-        "internalType": "bytes32",
+        "internalType": "uint256",
         "name": "",
-        "type": "bytes32"
+        "type": "uint256"
       }
     ],
-    "name": "domainIdByNode",
+    "name": "domainIdToLockToMintEntryId",
     "outputs": [
       {
         "internalType": "uint256",
@@ -108,45 +166,6 @@
   {
     "inputs": [
       {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "domainsInfo",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "assetAddress",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "tokenId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "node",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "tld",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "address",
-        "name": "userAddress",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "address",
         "name": "_feedContract",
         "type": "address"
@@ -192,6 +211,165 @@
       }
     ],
     "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isLockToMintEnabled",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "lockToMintDataMap",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "tokenAddress",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "quantity",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "domainId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "lockedAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "lockPeriod",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "claimed",
+        "type": "bool"
+      },
+      {
+        "internalType": "uint256",
+        "name": "claimedAt",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "lockToMintIdsByAccount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "lockToMintIdsByTLD",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "lockToMintLockPeriod",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "lockToMintMinimumRequiredTokens",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "lockToMintTokenAddr",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -288,7 +466,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "_amountUSDT",
+        "name": "_amountUSD",
         "type": "uint256"
       },
       {
@@ -322,6 +500,11 @@
         "internalType": "struct Defs.PaymentTokenDef",
         "name": "_pTokenInfo",
         "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_pTokenDecimals",
+        "type": "uint256"
       }
     ],
     "name": "toTokenAmount",
@@ -338,6 +521,19 @@
   {
     "inputs": [],
     "name": "totalDomains",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalLockToMintEntries",
     "outputs": [
       {
         "internalType": "uint256",

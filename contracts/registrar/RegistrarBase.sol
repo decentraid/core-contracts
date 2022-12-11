@@ -7,7 +7,7 @@
 pragma solidity ^0.8.0;
 
 //import "../utils/NameUtils.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../interface/IERC20P.sol";
 import "../interface/IRegistry.sol";
 import "../priceFeed/PriceFeed.sol";
 import "../interface/ILabelValidator.sol";
@@ -24,6 +24,17 @@ contract RegistrarBase is
     ////////////// Rgistries ///////////////
     IRegistry public _registry;
 
+    // lock to mint erc20 
+    address public lockToMintTokenAddr;
+
+    bool public isLockToMintEnabled;
+
+    // minimum required for _5pchars price
+    uint256 public lockToMintMinimumRequiredTokens;
+
+    // lock to mint lock period
+    uint256 public lockToMintLockPeriod;
+
     // tld => registry 
     //mapping(bytes32 => address) public registries;
 
@@ -34,20 +45,31 @@ contract RegistrarBase is
     mapping(address => uint256) public paymentTokensIndexes;
 
     ////// End Payment Token //////////
+    
+    /////////// Start Lock To Mint ////////////
 
+    uint256 public totalLockToMintEntries;
+
+    mapping(uint256 => LockToMintInfoDef) public lockToMintDataMap;
+    mapping(address => uint256[]) public lockToMintIdsByAccount;
+    mapping(bytes32 => uint256[]) public lockToMintIdsByTLD;
+
+    // domainId => lockToMintId
+    mapping(uint256 => uint256) public domainIdToLockToMintEntryId;
     ///// Registered domains ////////
     
     uint256 public totalDomains;
 
-    mapping(uint256 => DomainInfoDef) public domainsInfo;
+    mapping(uint256 => RegistrarNodeInfo) public _registrarNodesData;
     
-    mapping(bytes32 => uint256) public domainIdByNode;
+    mapping(bytes32 => uint256) public _nodeHashToIdMap;
 
     // tld indexes
     mapping(bytes32 => uint256[]) public domainIdsByTLD;
 
     mapping(address => uint256[]) public domainIdsByAccount;
 
+    //uint256[] public domainIdsByLockToMint;
     ////////  End Registered Domains //// 
 
     // native asset Address 
@@ -99,7 +121,26 @@ contract RegistrarBase is
         _;
     }
 
-    
-   
 
+
+    struct LockToMintInfoDef {
+        uint256  id;
+        address  tokenAddress;
+        address  owner;
+        uint256  quantity;
+        uint256  domainId;
+        uint256  lockedAt;
+        uint256  lockPeriod;
+        bool     claimed;
+        uint256  claimedAt;
+    }
+
+    struct ERC2612PermitDef {
+        address owner;
+        address spender;
+        uint256 deadline;
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
 }

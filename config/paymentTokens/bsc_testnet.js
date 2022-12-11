@@ -5,7 +5,7 @@ const ethers = require('ethers')
 //bnb testnet
  module.exports = async (network) => {
     return {
-        defaultStablecoin: "0x5ea7D6A33D3655F661C298ac8086708148883c34", // busd
+       // defaultStablecoin: "0x5ea7D6A33D3655F661C298ac8086708148883c34", // busd
         paymentTokens: [
             {   
                 tokenAddress: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE", // bnb
@@ -15,10 +15,8 @@ const ethers = require('ethers')
                 updatedOn:  Date.now()
             },
             {
-
-                tokenAddress: "0xa35062141Fa33BCA92Ce69FeD37D0E8908868AAe", // cake 
-                decimals: 18, ///it will be replaced by the right one in contract
-                priceFeedContract: "0x81faeDDfeBc2F8Ac524327d70Cf913001732224C", //cake-usd
+                tokenAddress: "0x60cD0522c91916d1633bc025aF341d23FAe5bd40", // our own usdc (usdcToken)
+                priceFeedContract: "0x9331b55D9830EF609A2aBCfAc0FBCE050A52fdEa", //busd-usd
                 enabled: true,
                 addedOn: Date.now(),
                 updatedOn:  Date.now()

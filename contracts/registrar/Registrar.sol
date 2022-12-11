@@ -34,7 +34,10 @@ contract Registrar is
     event AddPaymentToken(uint256 _id, address _assetAddress);
     event SetTreasuryAddress(address _account);
     event SetRegistry(address _addr);
-
+    event SetAffiliateShare(uint256 _valueBps);
+    event LockToMint(uint256 _domainId);
+    event LockToMintReleaseTokens(uint256 id);
+ 
     using SafeMathUpgradeable for uint256;
     using ECDSAUpgradeable for bytes32;
 
@@ -45,15 +48,12 @@ contract Registrar is
         address registryAddr,
         address requestSigner,
         address treasuryAddress_,
-        address defaultStableCoin_,
-        address _labelValidatorAddr
+        address _labelValidatorAddr,
+        address _lockToMinTokenAddr
     ) 
         public 
         initializer
     {   
-
-        require(defaultStableCoin_ != address(0), "Registrar#initialize: defaultStableCoin_ cannot be a zero address");
-        //require(treasuryAddress_ != address(0), "PubReg#initialize: treasuryAddress_ cannot be a zero address");
 
         __Context_init_unchained();
         __Ownable_init_unchained();
@@ -67,16 +67,23 @@ contract Registrar is
         _signer = requestSigner;
         _checkRequestAuth       =   false;
         affiliateSharePercent   =   500; // 5%  
-        defaultStableCoin       =   defaultStableCoin_;
         treasuryAddress         =   treasuryAddress_;
 
-        _priceSlippageToleranceRate = 20; // 0.2
+        _priceSlippageToleranceRate = 10; // 0.1%
 
         _nameLabelValidator = ILabelValidator(_labelValidatorAddr);
 
         _registry = IRegistry(registryAddr);
 
         nativeAssetAddress  = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+        lockToMintTokenAddr    =   _lockToMinTokenAddr;
+
+        isLockToMintEnabled    =   true;
+
+        lockToMintMinimumRequiredTokens = 5_000 * (10 ** 18);
+        
+        lockToMintLockPeriod   =    90 days;
     }
 
      /**
@@ -106,14 +113,65 @@ contract Registrar is
     }
 
     /**
-     * @dev update default stablecoin address
-     * @param _assetAddress the stablecoin contract address
+     * @dev set the affiliate share in bps
+     * @param _valueBps the value in basis point
      */
-    function setDefaultStableCoin(address _assetAddress)
+    function setAffiliateShare(uint256 _valueBps)
         public
         onlyOwner
     {
-        defaultStableCoin = _assetAddress;
+       affiliateSharePercent = _valueBps;
+        emit SetAffiliateShare(_valueBps);
+    } 
+
+    /**
+     * @dev enable or disable lock to mint
+     * @param _option wether true or false 
+     */
+    function enableLockToMint(bool _option)
+        public
+        onlyOwner
+    {
+        isLockToMintEnabled = _option;
+    }
+
+    /**
+     * @dev set the total tokens required for lock
+     * @param minTokensQty the minimum required tokens for the cheapest domain _5pchars
+     */
+    function setLockToMintMinimumRequiredTokens(
+       uint256 minTokensQty
+    ) 
+        public
+        onlyOwner
+    {
+        lockToMintMinimumRequiredTokens = minTokensQty;
+    }
+
+    /**
+     * @dev lock to mint lock period
+     * @param _timestampInSecs the lock time interval in unix timestamp seconds
+     */
+    function setLockToMintLockPeriod(
+        uint256 _timestampInSecs
+    ) 
+        public
+        onlyOwner
+    {
+        lockToMintLockPeriod = _timestampInSecs;
+    }
+
+    /**
+     * @dev lock to mint token address
+     * @param _addr erc20 token address
+     */
+    function setLockToMintTokenAddr(
+        address _addr
+    ) 
+        public
+        onlyOwner
+    {
+        lockToMintTokenAddr = _addr;
     }
 
     /**
@@ -147,34 +205,38 @@ contract Registrar is
      * @dev get domain by id
      * @param _id the domain Id 
      */
-    function getDomainById(uint256 _id)
+    function getNodeById(uint256 _id)
         public 
         view 
-        returns (DomainInfoDef memory, Record memory) 
+        returns (RegistrarNodeInfo memory, Node memory, TLDInfo memory) 
     {
-        DomainInfoDef memory _rg = domainsInfo[_id];
-        Record memory _domainRecord;
+        RegistrarNodeInfo memory _rg = _registrarNodesData[_id];
+        Node memory _nodeInfo;
 
-        _domainRecord = _registry.getRecord(_rg.node);
+        _nodeInfo =_registry.getNode(_rg.node);
+        
+        TLDInfo memory _tldInfo = _registry.getTLD(_rg.tld);
 
-        return (_rg, _domainRecord);
+        return (_rg, _nodeInfo, _tldInfo);
     }
 
     /**
      * @dev get domain by node
      * @param _node the domain Id 
      */
-    function getDomainByNode(bytes32 _node)
+    function getNodeByHash(bytes32 _node)
         public 
         view 
-        returns (DomainInfoDef memory, Record memory) 
-    {
-        DomainInfoDef memory _rg = domainsInfo[domainIdByNode[_node]];
-        Record memory _domainRecord;
+        returns (RegistrarNodeInfo memory, Node memory, TLDInfo memory) 
+    {   
 
-        _domainRecord = _registry.getRecord(_node);
+        RegistrarNodeInfo memory _rg = _registrarNodesData[_nodeHashToIdMap[_node]];
 
-        return (_rg, _domainRecord);
+        return (
+            _rg, 
+            _registry.getNode(_node),
+            _registry.getTLD(_rg.tld)
+        );
     }
 
 
@@ -200,9 +262,9 @@ contract Registrar is
     )
         public 
         view 
-        returns (DomainInfoDef memory, Record memory) 
+        returns (RegistrarNodeInfo memory, Node memory, TLDInfo memory) 
     {
-        return getDomainById(domainIdsByTLD[getTLDNameHash(_tld)][_index]);
+        return getNodeById(domainIdsByTLD[getTLDNameHash(_tld)][_index]);
     }
 
 
@@ -228,12 +290,11 @@ contract Registrar is
     )
         public 
         view 
-        returns (DomainInfoDef memory, Record memory) 
+        returns (RegistrarNodeInfo memory, Node memory, TLDInfo memory) 
     {
-        return getDomainById(domainIdsByAccount[_account][_index]);
+        return getNodeById(domainIdsByAccount[_account][_index]);
     }
 
-    
     /////////////////// END Domain info count /////////
 
     ////////////////// Request Auth ////////////////
@@ -366,7 +427,7 @@ contract Registrar is
     /**
      * @dev getPrice
      */
-     function getPrice(string memory _tld, string memory _label)
+     function getPrice(string memory _label, string memory _tld)
         public 
         view 
         returns(uint256 _price)
@@ -395,8 +456,7 @@ contract Registrar is
         string                      memory  _tld,
         address                     paymentToken,
         address                     affiliateAddr,
-        SvgProps        memory      _svgProps, // background info
-        RequestAuthInfo memory      authInfo 
+        SvgProps        memory      _svgProps // background info
     )
         public
         onlyValidLabel(_tld)
@@ -405,7 +465,7 @@ contract Registrar is
         payable
     {   
 
-        validateRequestAuth(authInfo);
+        //validateRequestAuth(authInfo);
    
         require(getRegistry() != address(0), "Registrar#registerDomain: INVALID_TLD");
 
@@ -417,7 +477,20 @@ contract Registrar is
 
         require(_pTokenInfo.tokenAddress != address(0), "Registrar#registerDomain: INVALID_PAYMENT_TOKEN");
 
-        uint256 tokenAmount = PriceFeed.toTokenAmount(getPrice(_tld, _label), _pTokenInfo);
+        
+        uint _ptokenDecimals = (_pTokenInfo.tokenAddress == nativeAssetAddress) 
+                                ? 18 
+                                : IERC20Metadata(_pTokenInfo.tokenAddress).decimals();
+
+        uint256 tokenAmount = PriceFeed.toTokenAmount(
+                                    getPrice(_label, _tld), 
+                                    _pTokenInfo,
+                                    _ptokenDecimals
+                                );
+
+        //console.log("tokenAmount########=======>>>>>", tokenAmount);
+
+        require(tokenAmount > 0, "Registrar#registerDomain: Payment amount cannot be 0");
 
         if( paymentToken == nativeAssetAddress ) {
 
@@ -428,11 +501,15 @@ contract Registrar is
                 tokenAmount = (tokenAmount - priceSlippageToleranceAmt);
             }
 
-            require(msg.value >= tokenAmount, "PubReg#registerDomain: INSUFFICIENT_AMOUNT_VALUE");
+            require(msg.value >= tokenAmount, "Registrar#registerDomain: INSUFFICIENT_AMOUNT_VALUE");
 
         } else {
-            require( IERC20(paymentToken).balanceOf(_msgSender()) >= tokenAmount, "PubReg#registerDomain: INSUFFICIENT_AMOUNT_VALUE");
-            require(IERC20(paymentToken).transferFrom(_msgSender(), address(this), tokenAmount), "PubReg#registerDomain: AMOUNT_TRANSFER_FAILED");
+
+            //console.log("IERC20(paymentToken).balanceOf(_msgSender())", IERC20(paymentToken).balanceOf(_msgSender()));
+            //console.log("tokenAmount==========================>>>>>>>>", tokenAmount);
+
+            require( IERC20(paymentToken).balanceOf(_msgSender()) >= tokenAmount, "Registrar#registerDomain: INSUFFICIENT_BALANCE");
+            require(IERC20(paymentToken).transferFrom(_msgSender(), address(this), tokenAmount), "Registrar#registerDomain: AMOUNT_TRANSFER_FAILED");
         }
 
         //send affiliate payment
@@ -449,12 +526,15 @@ contract Registrar is
         }
 
         // register the domain
-        (uint256 _tokenId, bytes32 _node) = _registry.mintDomain(_msgSender(), _label, _svgProps);
+        (
+            uint256 _tokenId, 
+            bytes32 _node
+        ) = _registry.mintDomain( _msgSender(), _label, _tld, _svgProps );
 
         // increment and assign +1
         uint256 _domainId = ++totalDomains;
 
-        domainsInfo[_domainId] = DomainInfoDef({
+        _registrarNodesData[_domainId] = RegistrarNodeInfo({
             assetAddress:   getRegistry(),
             tokenId:        _tokenId,
             node:           _node,
@@ -468,7 +548,7 @@ contract Registrar is
         // add to tld collection
         domainIdsByTLD[getTLDNameHash(_tld)].push(_domainId);
 
-        domainIdByNode[_node] = _domainId;
+        _nodeHashToIdMap[_node] = _domainId;
 
         emit RegisterDomain(
             _domainId,  
@@ -478,6 +558,261 @@ contract Registrar is
         );
 
     } //end 
+
+
+    /**
+     * @dev lock to mint, lock an erc20 token for a specific period to mint
+     * @param  _label the text part of the domain without the tld extension
+     * @param _tld the domain tld part
+     */
+     function lockToMint(
+        string      memory  _label,
+        string      memory  _tld,
+        SvgProps    memory  _svgProps, // image info
+        ERC2612PermitDef memory _permit
+    )
+        public
+        onlyValidLabel(_tld)
+        TLDExists(_tld)
+        nonReentrant()
+    { 
+
+        require(isLockToMintEnabled == true, "Registrar#lockToMint: lock to mint disabled");
+
+        require(lockToMintTokenAddr != address(0), "Registrar#lockToMint: token to lock contract not set, report to dev");
+
+         require(lockToMintLockPeriod > 0, "Registrar#lockToMint: lock period not set, report to dev");
+
+        require(getRegistry() != address(0), "Registrar#lockToMint: invalid TLD");
+
+        //tokens to lock 
+        uint256 tokenQtyToLock = getLockToMintRequiredTokens(_label, _tld);
+        
+        require(tokenQtyToLock > 0, "Registrar#lockToMint: Token quantity to lock cannot be 0, report to dev");
+        
+        IERC20P erc20LockToken = IERC20P(lockToMintTokenAddr);
+
+        require( 
+            erc20LockToken.balanceOf(_msgSender()) >= tokenQtyToLock, 
+            string(abi.encodePacked(
+                "Registrar#lockToMint:", 
+                tokenQtyToLock, 
+                " ", 
+                IERC20Metadata(lockToMintTokenAddr).symbol(), 
+                " is required for locking"
+            ))
+        );
+
+        // permit 
+        erc20LockToken.permit(
+            _permit.owner, 
+            _permit.spender, 
+            tokenQtyToLock,
+            _permit.deadline,
+            _permit.v,
+            _permit.r,
+            _permit.s
+        );
+
+        require(
+            erc20LockToken.transferFrom(_msgSender(), address(this), tokenQtyToLock),
+            "Registrar#lockToMint: TOKEN_TRANSFER_FAILED"
+        );
+
+        bytes32 tldNameHash = getTLDNameHash(_tld);
+
+        // increment and assign +1
+        uint256 _domainId = ++totalDomains;
+
+        uint256 _lockToMintId = ++totalLockToMintEntries;
+
+        lockToMintDataMap[_lockToMintId] = LockToMintInfoDef({
+            id:             _lockToMintId,
+            tokenAddress:   lockToMintTokenAddr,
+            owner:          _msgSender(),
+            quantity:       tokenQtyToLock,
+            lockedAt:       block.timestamp,
+            lockPeriod:     lockToMintLockPeriod,
+            domainId:       _domainId,
+            claimed:        false,
+            claimedAt:      0
+        });
+
+        // save data
+        lockToMintIdsByAccount[_msgSender()].push(_lockToMintId);
+        lockToMintIdsByTLD[tldNameHash].push(_lockToMintId); 
+
+        domainIdToLockToMintEntryId[_domainId] = _lockToMintId;
+
+        // register the domain
+        (
+            uint256 _tokenId, 
+            bytes32 _node
+        ) = _registry.mintDomain( _msgSender(), _label, _tld, _svgProps );
+
+
+        _registrarNodesData[_domainId] = RegistrarNodeInfo({
+            assetAddress:   getRegistry(),
+            tokenId:        _tokenId,
+            node:           _node,
+            tld:            tldNameHash,
+            userAddress:    _msgSender()
+        });
+
+
+        // add to user's domains collection
+        domainIdsByAccount[_msgSender()].push(_domainId);
+
+        // add to tld collection
+        domainIdsByTLD[tldNameHash].push(_domainId);
+
+        _nodeHashToIdMap[_node] = _domainId;
+
+        //domainIdsByLockToMint.push(_domainId);
+
+        emit LockToMint(_domainId);
+    }//end lock to mint
+
+
+    /**
+     * @dev lockToMint release locked tokens
+     * @param id the lock to mint id
+     */
+    function lockToMintReleaseTokens(uint256 id)
+        public 
+    {
+        LockToMintInfoDef memory lt = lockToMintDataMap[id];
+
+        require(lt.lockedAt > 0, "Registrar: entry not found");
+        require(lt.owner == _msgSender(), "Registrar: not owner");
+        require((block.timestamp - lt.lockedAt) > lt.lockPeriod, "Registrar: unlock period is not due");
+        require(lt.claimed == false, "Registrar: already claimed");
+
+        //lets now resend user's token
+        require(
+            IERC20(lt.tokenAddress).transferFrom(address(this), lt.owner, lt.quantity),
+            "Registrar#lockToMint: TOKEN_TRANSFER_FAILED"
+        );
+
+        lockToMintDataMap[id].claimed = true;
+        lockToMintDataMap[id].claimedAt = block.timestamp;
+
+        emit LockToMintReleaseTokens(id);
+    } //end 
+
+    /**
+     * @dev get lock to mint quantity
+     */
+    function getLockToMintRequiredTokens(
+        string   memory  _label,
+        string   memory  _tld
+    )
+        public 
+        view 
+        returns (uint256 _qty)
+    {
+
+        TLDInfo memory _tldInfo = _registry.getTLD(getTLDNameHash(_tld));
+      
+        uint256 priceFor5pchars = _tldInfo.prices._5pchars;
+
+        uint256 domainPrice = getPrice(_label, _tld);
+
+        if(priceFor5pchars == 0 || domainPrice == 0) return 0;
+
+        return (domainPrice / priceFor5pchars) * lockToMintMinimumRequiredTokens;
+    }
+
+    /*
+     * @dev get mint to lock entry
+     * @param id the entry id
+     */
+    function  getLockToMintEntryById(uint256 id) 
+        public 
+        view 
+        returns (
+            LockToMintInfoDef memory lockedEntry, 
+            RegistrarNodeInfo memory _domainInfo,
+            Node memory _recordInfo
+        ) 
+    {
+        lockedEntry = lockToMintDataMap[id];
+
+        if(lockedEntry.lockedAt == 0) {
+            return (lockedEntry, _domainInfo, _recordInfo);
+        }
+
+        (_domainInfo, _recordInfo, ) = getNodeById(lockedEntry.domainId);
+    }
+
+    /**
+     * @dev get total lock to mint entries by account addr
+     * @param _account the account address
+     */
+    function  getLockToMintTotalEntriesByAccount(
+        address _account
+    ) 
+        public 
+        view 
+        returns(uint256)
+    {
+        return lockToMintIdsByAccount[_account].length;
+    }
+
+    /**
+     * @dev get the lock to mint entry by account indexed ids
+     * @param _account user account id
+     * @param _index the index of lockToMintIdsByAccount 
+     */
+    function  getLockToMintEntryByAccountIndex(
+        address _account,
+        uint256 _index
+    ) 
+        public 
+        view
+        returns (
+            LockToMintInfoDef memory, 
+            RegistrarNodeInfo memory,
+            Node memory 
+        ) 
+    {
+        return getLockToMintEntryById(lockToMintIdsByAccount[_account][_index]);
+    }
+
+    /**
+     * @dev get total lock to min entries by tld
+     * @param _tld the tld name
+     */
+    function  getLockToMintTotalEntriesByTLD(
+        string memory _tld
+    ) 
+        public 
+        view 
+        returns(uint256)
+    {
+        return lockToMintIdsByTLD[getTLDNameHash(_tld)].length;
+    }
+
+     /**
+     * @dev get the lock to mint entry by tld ids index
+     * @param _tld the tld label
+     * @param _index the index of lockToMintIdsByTLD 
+     */
+    function  getLockToMintEntryByTLDIndex(
+        string memory _tld,
+        uint256 _index
+    ) 
+        public 
+        view
+        returns (
+            LockToMintInfoDef memory, 
+            RegistrarNodeInfo memory,
+            Node memory 
+        ) 
+    {
+        return getLockToMintEntryById(lockToMintIdsByTLD[getTLDNameHash(_tld)][_index]);
+    }
+
 
     /**
      * @dev handle transfer
@@ -564,7 +899,7 @@ contract Registrar is
         onlyOwner 
     {
         IERC20 _erc20 = IERC20(_assetAddress);
-        require(_erc20.balanceOf(address(this)) > 0, "PubReg#withdrawToken: ZERO_BALANCE");
+        require(_erc20.balanceOf(address(this)) > 0, "Registrar#withdrawToken: ZERO_BALANCE");
         _erc20.transfer(_to, _erc20.balanceOf(address(this)));
     }
 

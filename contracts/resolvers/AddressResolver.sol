@@ -54,11 +54,14 @@ abstract contract AddressResolver is ERC165StorageUpgradeable, ResolverBase {
     }
 
     function setAddr(bytes32 node, uint coinType, bytes memory a) public onlyAuthorized(node) {
+       
+        _addressRecords[node][coinType] = a;
+
         emit AddressChanged(node, coinType, a);
+        
         if(coinType == ASSET_TYPE_ETH) {
             emit AddrChanged(node, bytesToAddress(a));
         }
-        _addressRecords[node][coinType] = a;
     }
 
     function addr(bytes32 node, uint coinType) public view returns(bytes memory) {

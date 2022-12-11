@@ -25,15 +25,15 @@ contract DataStore is Defs {
     mapping(bytes32 => uint256)         internal     _tldsIds;
 
     // tokenId   => record
-    mapping(uint256 => Record)          internal      _records;
+    mapping(uint256 => Node)          internal        _nodes;
     mapping(bytes32 => uint256)         internal      _recordsNodeToId;
-    mapping(bytes32 => uint256[])       internal      _recordsByParent;
+    mapping(bytes32 => uint256[])       internal      _nodesByParent;
 
     //mapping(uint256 => bytes32)         internal      _tokenIdToNodeMap;
-    mapping(bytes32 => SvgProps)        internal      _svgImagesProps;
-    
+    //mapping(bytes32 => SvgProps)         public        _svgImagesProps;
+     
     // namehash => address
-    mapping(bytes32 => address)         internal      _controllers;
+    mapping(bytes32 => address)         internal       _controllers;
 
 
     //nft metadata generator

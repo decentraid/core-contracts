@@ -337,11 +337,6 @@
         "type": "string"
       },
       {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
         "internalType": "bytes32",
         "name": "tldType",
         "type": "bytes32"
@@ -434,12 +429,7 @@
     "inputs": [
       {
         "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "tld",
+        "name": "label",
         "type": "string"
       },
       {
@@ -626,7 +616,7 @@
         "type": "bytes32"
       }
     ],
-    "name": "getRecord",
+    "name": "getNode",
     "outputs": [
       {
         "components": [
@@ -666,6 +656,23 @@
             "type": "uint256"
           },
           {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "cords",
+                "type": "string"
+              },
+              {
+                "internalType": "string[][]",
+                "name": "gcolors",
+                "type": "string[][]"
+              }
+            ],
+            "internalType": "struct Defs.SvgProps",
+            "name": "svgImageProps",
+            "type": "tuple"
+          },
+          {
             "internalType": "uint256",
             "name": "createdAt",
             "type": "uint256"
@@ -676,7 +683,95 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct Defs.Record",
+        "internalType": "struct Defs.Node",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_node",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_index",
+        "type": "uint256"
+      }
+    ],
+    "name": "getNodesByParentIndex",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "label",
+            "type": "string"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "namehash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "primaryNode",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "parentNode",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "enum Defs.NodeType",
+            "name": "nodeType",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tokenId",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "tldId",
+            "type": "uint256"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "cords",
+                "type": "string"
+              },
+              {
+                "internalType": "string[][]",
+                "name": "gcolors",
+                "type": "string[][]"
+              }
+            ],
+            "internalType": "struct Defs.SvgProps",
+            "name": "svgImageProps",
+            "type": "tuple"
+          },
+          {
+            "internalType": "uint256",
+            "name": "createdAt",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "updatedAt",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct Defs.Node",
         "name": "",
         "type": "tuple"
       }
@@ -732,75 +827,21 @@
             "type": "uint256"
           },
           {
-            "internalType": "uint256",
-            "name": "createdAt",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "updatedAt",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Defs.Record",
-        "name": "",
-        "type": "tuple"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "bytes32",
-        "name": "_node",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_index",
-        "type": "uint256"
-      }
-    ],
-    "name": "getRecordByParentIndex",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "string",
-            "name": "label",
-            "type": "string"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "namehash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "primaryNode",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "parentNode",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "enum Defs.NodeType",
-            "name": "nodeType",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tokenId",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "tldId",
-            "type": "uint256"
+            "components": [
+              {
+                "internalType": "string",
+                "name": "cords",
+                "type": "string"
+              },
+              {
+                "internalType": "string[][]",
+                "name": "gcolors",
+                "type": "string[][]"
+              }
+            ],
+            "internalType": "struct Defs.SvgProps",
+            "name": "svgImageProps",
+            "type": "tuple"
           },
           {
             "internalType": "uint256",
@@ -813,7 +854,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct Defs.Record",
+        "internalType": "struct Defs.Node",
         "name": "",
         "type": "tuple"
       }
@@ -860,11 +901,6 @@
           {
             "internalType": "string",
             "name": "label",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "name",
             "type": "string"
           },
           {
@@ -968,11 +1004,6 @@
           {
             "internalType": "string",
             "name": "label",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "name",
             "type": "string"
           },
           {
@@ -1089,11 +1120,6 @@
           {
             "internalType": "string",
             "name": "label",
-            "type": "string"
-          },
-          {
-            "internalType": "string",
-            "name": "name",
             "type": "string"
           },
           {
@@ -1321,7 +1347,7 @@
           },
           {
             "internalType": "string[][]",
-            "name": "gColors",
+            "name": "gcolors",
             "type": "string[][]"
           }
         ],
@@ -1367,7 +1393,7 @@
           },
           {
             "internalType": "string[][]",
-            "name": "gColors",
+            "name": "gcolors",
             "type": "string[][]"
           }
         ],
@@ -1446,6 +1472,25 @@
       }
     ],
     "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "node",
+        "type": "bytes32"
+      }
+    ],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -1678,7 +1723,7 @@
         "type": "address"
       }
     ],
-    "name": "setMetadaGenerator",
+    "name": "setMetadataGen",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -1895,11 +1940,6 @@
         "internalType": "uint256",
         "name": "id",
         "type": "uint256"
-      },
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
       },
       {
         "internalType": "string",

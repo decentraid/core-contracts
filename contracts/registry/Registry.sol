@@ -18,7 +18,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URISto
 //import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
-import "../Defs.sol";
+import "../Defs.sol"; 
 import "../roles/Roles.sol";
 import "../utils/NameUtils.sol";
 import "../ContractBase.sol";
@@ -85,8 +85,7 @@ contract Registry is
 
     /**
      * @dev add tld
-     * @param name the full text tld name
-     * @param tld the domain extension in lower case
+     * @param label the domain extension in lower case
      * @param webUrl the domain or web url for the tld example: cake.page
      * @param metadataUri the metadata uri for the tld (ipsfs, arweave or ...)
      * @param minLen the minimum domain length 
@@ -94,8 +93,7 @@ contract Registry is
      * @param prices the domain prices 
      */
     function addTLD(
-        string memory name,
-        string memory tld,
+        string memory label,
         bytes32       tldType,
         string memory webUrl,
         string memory metadataUri,
@@ -107,22 +105,21 @@ contract Registry is
         onlyAdmin
         returns (uint256)
     {
-        require(_nameLabelValidator.matches(tld), "Registry: INVALID_TLD_NAME");
+        require(_nameLabelValidator.matches(label), "Registry: INVALID_TLD_NAME");
 
         require(tldType == TLD_TYPE_DOMAIN || tldType == TLD_TYPE_SOULBOUND, "Registry: UNKNOWN_TLD_TYPE");
         
-        bytes32 tldHash = getTLDNameHash(tld);
+        bytes32 namehash = getTLDNameHash(label);
 
-        require(_tlds[_tldsIds[tldHash]].createdAt == 0, "Registry: TLD_EXISTS");
+        require(_tlds[_tldsIds[namehash]].createdAt == 0, "Registry: TLD_EXISTS");
 
         uint256 _id = ++totalTLDs;
 
         TLDInfo memory tldInfo = TLDInfo(
             _id,
-            name,
-            tld,      //label
+            label,      //label
             tldType,
-            tldHash, //nameHash
+            namehash, //nameHash
             webUrl,
             metadataUri,
             minLen,
@@ -133,7 +130,7 @@ contract Registry is
         );
 
         _tlds[_id] = tldInfo;
-        _tldsIds[tldHash] = _id;
+        _tldsIds[namehash] = _id;
 
         emit AddTLD(_id);
 
@@ -143,7 +140,6 @@ contract Registry is
     /**
      * @dev update tld
      * @param id the tld id
-     * @param name the full text tld name
      * @param webUrl the domain or web url for the tld example: cake.page
      * @param metadataUri the metadata uri for the tld (ipsfs, arweave or ...)
      * @param minLen the minimum domain length 
@@ -152,7 +148,6 @@ contract Registry is
      */
     function updateTLD(
         uint256 id,
-        string memory name,
         string memory webUrl,
         string memory metadataUri,
         uint          minLen,
@@ -163,9 +158,8 @@ contract Registry is
         onlyAdmin
     {   
         
-        require(_tlds[id].createdAt > 0, "Registry#updateTLD: TLD_NOT_FOUND");
+        require(_tlds[id].createdAt > 0, "Registry: TLD_NOT_FOUND");
 
-        _tlds[id].label = name;
         _tlds[id].webUrl = webUrl;
         _tlds[id].metadataUri = metadataUri;
         _tlds[id].minLen = minLen;
@@ -232,15 +226,15 @@ contract Registry is
     }
     
     /**
-     * @dev getRecord get the record 
+     * @dev getNode get the record 
      * @param node the node to fetch the record
      */
-    function getRecord(bytes32 node)  
+    function getNode(bytes32 node)  
         public 
         view 
-        returns(Record memory)
+        returns(Node memory)
     {
-        return _records[_recordsNodeToId[node]];
+        return _nodes[_recordsNodeToId[node]];
     }
 
     /**
@@ -250,9 +244,9 @@ contract Registry is
     function getRecordById(uint256 _tokenId)  
         public 
         view 
-        returns(Record memory)
+        returns(Node memory)
     {
-        return _records[_tokenId];
+        return _nodes[_tokenId];
     }
 
     /**
@@ -264,7 +258,7 @@ contract Registry is
         view 
         returns(uint256)
     {
-        return _recordsByParent[_node].length;
+        return _nodesByParent[_node].length;
     }
 
 
@@ -272,15 +266,15 @@ contract Registry is
      * @dev get total records by parent
      * @param _node the  node to count the child records
      */
-    function getRecordByParentIndex(
+    function getNodesByParentIndex(
         bytes32  _node,
         uint256  _index
     )
         public 
         view 
-        returns(Record memory)
+        returns(Node memory)
     {
-        return _records[_recordsByParent[_node][_index]];
+        return _nodes[_nodesByParent[_node][_index]];
     }
    
     /**
@@ -303,8 +297,8 @@ contract Registry is
 
         TLDInfo memory _tldInfo = getTLD(getTLDNameHash(_tld));
 
-        require(_tldInfo.createdAt > 0, "Registry: INVALID_TLD");
-        require(!strMatches(_label, _tld), "Registry: INVALID_LABEL");
+        require(_tldInfo.createdAt > 0, "Registry: invalid tld");
+        require(!strMatches(_label, _tld), "Registry: invalid label");
 
         _tokenId = ++totalTokenIds;
         
@@ -316,21 +310,20 @@ contract Registry is
             minLabelLength = 1;
         }
         
-
         //lets now create our record 
         require(
             bytes(_label).length >= minLabelLength, 
-            string(abi.encodePacked("Registry#: LABEL_MUST_EXCEED_", _tldInfo.minLen, "_CHARACTERS"))
+            string(abi.encodePacked("Registry#: label must exceed ", _tldInfo.minLen, " characters"))
         );
 
         //lets get the domain hash
         _node = nameHash(_label, _tldInfo.namehash);
-
+ 
         // lets check if the domainHash exists
-        require(getRecord(_node).createdAt == 0, "Registry: DOMAIN_TAKEN");
+        require(getNode(_node).createdAt == 0, "Registry: domain taken");
 
 
-        _records[_tokenId] = Record(
+        _nodes[_tokenId] = Node(
             _label,
             _node, //namehash
             bytes32(""), //primaryNode
@@ -338,6 +331,7 @@ contract Registry is
             NodeType.DOMAIN, // nodeType
             _tokenId, //tokenId
             _tldInfo.id, //tldID
+            _svgProps,
             block.timestamp, //createdAt
             block.timestamp //updatedAt
         ); 
@@ -346,9 +340,9 @@ contract Registry is
         _recordsNodeToId[_node] = _tokenId;
 
         // parentNode ids 
-        _recordsByParent[_tldInfo.namehash].push(_tokenId);
+        _nodesByParent[_tldInfo.namehash].push(_tokenId);
 
-        _svgImagesProps[_node] = _svgProps;
+        //_svgImagesProps[_node] = _svgProps;
 
         emit MintDomain(_tokenId, _to);
     }
@@ -359,7 +353,7 @@ contract Registry is
     function mintDomain(
         address     _to,
         string      calldata       _label,
-        string     calldata        _tld,
+        string      calldata        _tld,
         SvgProps    memory         _svgProps
     ) 
         public 
@@ -386,31 +380,35 @@ contract Registry is
         returns(uint256 _tokenId, bytes32 _node) 
     {
 
-        Record memory _parentRecord = getRecord(_parentNode);
+        Node memory _parentRecord = getNode(_parentNode);
 
-        require(_parentRecord.createdAt > 0, "Registry#_mintSubdomain: PARENT_NOT_FOUND");
+        require(_parentRecord.createdAt > 0, "Registry: PARENT_NOT_FOUND");
 
         bytes32 _primaryNode;
-        Record memory _primaryRecord;
+        Node memory _primaryRecord;
 
         if(_parentRecord.nodeType == NodeType.DOMAIN){
             _primaryNode = _parentRecord.namehash;
              _primaryRecord = _parentRecord;
         } else {
             _primaryNode = _parentRecord.primaryNode;
-            _primaryRecord = getRecord(_primaryNode);
+            _primaryRecord = getNode(_primaryNode);
         }
 
         _tokenId = ++totalTokenIds;
         
         address _to = ownerOf(_primaryRecord.tokenId);
 
-        _mint(_to, _tokenId);
-
         //lets get the subdomain hash
         _node = nameHash(_label, _parentNode);
 
-        _records[_tokenId] = Record(
+        // lets check if the domainHash exists
+        require(getNode(_node).createdAt == 0, "Registry: subdomain exists");
+
+        /// do mint subdomain
+        _mint(_to, _tokenId);
+
+        _nodes[_tokenId] = Node(
             _label,
             _node, //namehash
             _parentNode, //primaryNode
@@ -418,15 +416,14 @@ contract Registry is
             NodeType.SUBDOMAIN, // nodeType
             _tokenId, //tokenId
             _parentRecord.tldId, //tldID
+            _svgProps,
             block.timestamp, //createdAt
             block.timestamp //updatedAt
         ); 
-    
+
         // lets create a reverse token id 
         _recordsNodeToId[_node] = _tokenId;
-        _recordsByParent[_parentNode].push(_tokenId);
-
-        _svgImagesProps[_node] = _svgProps;
+        _nodesByParent[_parentNode].push(_tokenId);
 
         emit MintSubdomain(_tokenId, _to);
     }
@@ -445,7 +442,7 @@ contract Registry is
         onlyValidLabel(_label)
         returns(uint256, bytes32) 
     {
-        require(ownerOf(getRecord(_parentNode).tokenId) == _msgSender(), "Registry#mintSubdomain: NOT_PARENT_OWNER");
+        require(ownerOf(getNode(_parentNode).tokenId) == _msgSender(), "Registry: NOT_PARENT_OWNER");
         return _mintSubdomain(_label, _parentNode, _svgProps);
     }
 
@@ -456,12 +453,12 @@ contract Registry is
     function primaryNodeInfo(bytes32 node)
         public
         view 
-        returns (Record memory)
+        returns (Node memory)
     {
-        if(getRecord(node).nodeType == NodeType.DOMAIN){
-            return getRecord(node);
+        if(getNode(node).nodeType == NodeType.DOMAIN){
+            return getNode(node);
         } else {
-            return getRecord(getRecord(node).primaryNode);
+            return getNode(getNode(node).primaryNode);
         } 
     }*/
 
@@ -482,7 +479,7 @@ contract Registry is
 
         while(true){
             
-            Record memory _record = getRecord(node);
+            Node memory _record = getNode(node);
 
             _result =  abi.encodePacked(_result,".");
 
@@ -514,14 +511,14 @@ contract Registry is
         public 
         onlyAdmin
     {
-        require(_addr != address(0), "Registry#setResolver: INVALID_ADDRESS");
+        require(_addr != address(0), "Registry: INVALID_ADDRESS");
         _resolver = IResolver(_addr);
     }
 
     /**
      * @dev set meta dta generator contract
      */
-    function setMetadaGenerator(address _addr)
+    function setMetadataGen(address _addr)
         public 
         onlyAdmin
     {
@@ -581,8 +578,8 @@ contract Registry is
      */
     function setController(bytes32 _node, address account)
         public
-        tokenExists(getRecord(_node).tokenId)
-        onlyTokenOwner(getRecord(_node).tokenId)
+        tokenExists(getNode(_node).tokenId)
+        onlyTokenOwner(getNode(_node).tokenId)
     {
         _controllers[_node] = account;      
         emit SetController(_node, account);
@@ -609,9 +606,12 @@ contract Registry is
         returns (string memory)
     {
         
-       bytes32 _node = _records[tokenId].namehash;
+       ///bytes32 _node = _nodes[tokenId].namehash;
 
-       return _metadataGenerator.getTokenURI(reverseNode(_node), _svgImagesProps[_node]);
+        return _metadataGenerator.getTokenURI(
+                    reverseNode(_nodes[tokenId].namehash), 
+                    _nodes[tokenId].svgImageProps
+                );
     }
     
     /**
@@ -626,14 +626,17 @@ contract Registry is
         virtual 
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
     {   
-        
-        Record memory recordInfo = _records[tokenId];
+        // if not mint, lets do verifications
+        if( from != address(0) ){
 
-        require(recordInfo.createdAt > 0, "Registry#_beforeTokenTransfer: RECORD_NOT_FOUND");
+            Node memory recordInfo = _nodes[tokenId];
 
-        if(_tlds[recordInfo.tldId].tldType == TLD_TYPE_SOULBOUND){
-            revert("Registry#_beforeTokenTransfer: NOT_TRANSFERABLE");
-        }   
+            require(recordInfo.createdAt > 0, "Registry: RECORD_NOT_FOUND");
+
+            if(_tlds[recordInfo.tldId].tldType == TLD_TYPE_SOULBOUND){
+                revert("Registry: NOT_TRANSFERABLE");
+            }   
+        } //end if not mint
 
         super._beforeTokenTransfer(from, to, tokenId);
     }
@@ -670,15 +673,23 @@ contract Registry is
         (address) 
     {
         
-        Record memory _record = _records[tokenId];
+        Node memory _record = _nodes[tokenId];
         
         if(_record.nodeType == NodeType.DOMAIN){
             return super.ownerOf(tokenId);   
         }
 
-        return super.ownerOf(getRecord(_record.primaryNode).tokenId); 
+        return super.ownerOf(getNode(_record.primaryNode).tokenId); 
     }
 
+    function owner(bytes32 node) 
+        public 
+        view
+        returns 
+        (address) 
+    {
+        return ownerOf(_recordsNodeToId[node]);
+    }
     //////////////////////////// Overrides Ends  //////////////////////////
 
     uint256[50] private __gap;

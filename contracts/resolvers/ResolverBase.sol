@@ -11,8 +11,11 @@ import "../interface/IRegistry.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/introspection/ERC165StorageUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/MulticallUpgradeable.sol";
 
-abstract contract ResolverBase {
+abstract contract ResolverBase is 
+    MulticallUpgradeable 
+{
 
     IRegistry public _registry;
 
@@ -30,7 +33,7 @@ abstract contract ResolverBase {
 
         require(address(_registry) != address(0), "Resolver#ResolverBase: registry address not set");
         
-        address _owner = _registry.ownerOf(_registry.getRecord(node).tokenId);
+        address _owner = _registry.ownerOf(_registry.getNode(node).tokenId);
 
         if(_owner == address(0)) return false;
 
@@ -54,19 +57,13 @@ abstract contract ResolverBase {
         return keccak256(abi.encodePacked(a)) == keccak256(abi.encodePacked(b));
     }
 
-
-    function bytesToAddress(bytes memory b) internal pure returns(address payable a) {
-        require(b.length == 20);
-        assembly {
-            a := div(mload(add(b, 32)), exp(256, 12))
-        }
+    function bytesToAddress(bytes memory b) internal pure returns (address payable) {
+        return payable(address(uint160(bytes20(b))));
     }
 
-    function addressToBytes(address a) internal pure returns(bytes memory b) {
-        b = new bytes(20);
-        assembly {
-            mstore(add(b, 32), mul(a, exp(256, 12)))
-        }
+    function addressToBytes(address a) internal pure returns (bytes memory){
+        return abi.encodePacked(a);
     }
 
-}
+}  
+

@@ -53,7 +53,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "_amountUSDT",
+        "name": "_amountUSD",
         "type": "uint256"
       },
       {
@@ -87,6 +87,11 @@
         "internalType": "struct Defs.PaymentTokenDef",
         "name": "_pTokenInfo",
         "type": "tuple"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_pTokenDecimals",
+        "type": "uint256"
       }
     ],
     "name": "toTokenAmount",

@@ -1,4 +1,4 @@
-const Utils = require("../../Classes/Utils")
+const Utils = require("../../classes/Utils")
 const path = require("path")
 const ethers = require('ethers')
 
@@ -6,8 +6,8 @@ const dexBytes32 = ethers.utils.formatBytes32String("dex")
 
 module.exports = async (network) => {
 
-    let usdcAddress = (await getAssetAddress(network, "UsdcToken"));
-    //let usdcAddress = "0x07865c6e87b9f70255377e024ace6630c1eaa37f" // usdc goerli
+    //(await getAssetAddress(network, "UsdcToken"));
+    let usdcAddress = "0x07865c6e87b9f70255377e024ace6630c1eaa37f" // usdc goerli
 
     return {
         defaultStablecoin: usdcAddress,
