@@ -1,6 +1,10 @@
-// SPDX-License-Identifier: MIT
-// File: @openzeppelin/contracts/utils/Context.sol
-
+/*
+* Decentra ID
+* @website github.com/decentraid
+* @author Decentraid Team <hello@decentraid.io>
+* @license SPDX-License-Identifier: MIT
+*/
+ 
 
 pragma solidity ^0.8.0;
 
@@ -630,13 +634,7 @@ contract ERC20 is Context, IERC20 {
 // File: contracts/DummyToken.sol
 
 
-/*
-* Decentra ID
-* @website github.com/decentraid
-* @author Decentraid Team <hello@decentraid.io>
-* @license SPDX-License-Identifier: MIT
-*/
- 
+
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 

@@ -266,6 +266,8 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
         for(let tldObj of TLDsArrayData){
 
+            if(!tldObj.tld) continue;
+            
             let params = [   
                 tldObj.tld,
                 tldType, // tld type
@@ -282,7 +284,7 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
             addTldMulticallParams.push(data)
 
-            tldsToChainMap[tldObj.tldName] = chainId;
+            tldsToChainMap[tldObj.tld] = chainId;
         }
 
       
@@ -325,15 +327,25 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
         let setRegistryResolver = await registryContract.setResolver(deployedResolverContract.address)
 
         Utils.successMsg("set registry's resolver success: "+ setRegistryResolver.hash)
+
+        Utils.infoMsg("Deploying ZMulticall contract")
+
+        let deployedZMulticall = await deploy('ZMultiCall', {
+            from: owner,
+            log: true
+        });
+
+        Utils.successMsg(`ZMulticall deployed successfully: ${deployedZMulticall.address}`)
+
+        deployedContractsAddresses["multicall"] = deployedZMulticall.address;
         
         //exporting contract info
-        Utils.successMsg("Exporting contract info")
+        Utils.infoMsg("Exporting contract info")
 
         let contractInfoExportPaths = secretsConfig.contractInfoExportPaths || []
 
         for(let configDirPath of contractInfoExportPaths){
 
-            
             //lets create the path 
             await fsp.mkdir(configDirPath, {recursive: true})
 
@@ -403,6 +415,9 @@ module.exports = async ({getUnnamedAccounts, deployments, ethers, network}) => {
 
             Utils.successMsg(`Exporting registry.json to ${exportPath}/registry.json`);
             await fsp.writeFile(`${exportDir}/registry.json`, JSON.stringify(deployedRegistryContract.abi, null, 2));
+        
+            Utils.successMsg(`Exporting multicall.json to ${exportPath}/multicall.json`);
+            await fsp.writeFile(`${exportDir}/multicall.json`, JSON.stringify(deployedZMulticall.abi, null, 2));
         
         }
 
